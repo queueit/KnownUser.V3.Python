@@ -1,8 +1,7 @@
 >You can find the latest released version [here](https://github.com/queueit/KnownUser.V3.Python/releases/latest)
 
 # KnownUser.V3.Python
-The Queue-it Security Framework is used to ensure that end users cannot bypass the queue by adding a server-side integration to your server. 
-It supports Python >= 2.7.
+The Queue-it Security Framework is used to ensure that end users cannot bypass the queue by adding a server-side integration to your server. It was developed and verified with Python v.2.7 and Django v.1.8. Please reach out to us if you are using another web framework, so we add it to the supported providers.
 
 ## Introduction
 When a user is redirected back from the queue to your website, the queue engine can attache a query string parameter (`queueittoken`) containing some information about the user. 
