@@ -53,9 +53,8 @@ The KnownUser validation must be done on *all requests except requests for stati
 So, if you add the KnownUser validation logic to a central place, then be sure that the Triggers only fire on page requests (including ajax requests) and not on e.g. image.
 
 If we have the `integrationconfig.json` copied  in the folder beside other knownuser files inside web application folder then 
-the following method is all that is needed to validate that a user has been through the queue:
+the following method (using Django v.1.8) is all that is needed to validate that a user has been through the queue:
  
-Example using Django v.1.8
 ```python
 from django.http import HttpResponse
 
@@ -109,7 +108,7 @@ def index(request):
                 response.status_code = 302
                 response["Location"] = requestUrlWithoutToken
             
-		return response
+	return response
 
     except StandardError as stdErr:
         # Log the Error
@@ -128,9 +127,8 @@ If your application server (maybe due to security reasons) is not allowed to do 
 3. Specify the configuration in code without using the Trigger/Action paradigm. In this case it is important *only to queue-up page requests* and not requests for resources or AJAX calls. 
 This can be done by adding custom filtering logic before caling the `KnownUser.resolveRequestByLocalEventConfig()` method. 
 
-The following is an example of how to specify the configuration in code:
+The following is an example (using Django v.1.8) of how to specify the configuration in code:
 
-Example using Django v.1.8
 ```python
 from django.http import HttpResponse
 
@@ -149,16 +147,16 @@ def index(request):
         customerId = "" # Your Queue-it customer ID
         secretKey = "" # Your 72 char secret key as specified in Go Queue-it self-service platform
 
-		eventConfig = QueueEventConfig()
-		eventConfig.eventId = "" # ID of the queue to use
-		eventConfig.queueDomain = "xxx.queue-it.net" #Domian name of the queue - usually in the format [CustomerId].queue-it.net
-		# eventConfig.cookieDomain = ".my-shop.com" #Optional - Domain name where the Queue-it session cookie should be saved
-		eventConfig.cookieValidityMinute = 15 #Optional - Validity of the Queue-it session cookie. Default is 10 minutes
-		eventConfig.extendCookieValidity = true #Optional - Should the Queue-it session cookie validity time be extended each time the validation runs? Default is true.
-		# eventConfig.culture = "da-DK" #Optional - Culture of the queue ticket layout in the format specified here: https://msdn.microsoft.com/en-us/library/ee825488(v=cs.20).aspx Default is to use what is specified on Event
-		# eventConfig.layoutName = "NameOfYourCustomLayout" #Optional - Name of the queue ticket layout - e.g. "Default layout by Queue-it". Default is to take what is specified on the Event
+	eventConfig = QueueEventConfig()
+	eventConfig.eventId = "" # ID of the queue to use
+	eventConfig.queueDomain = "xxx.queue-it.net" #Domian name of the queue - usually in the format [CustomerId].queue-it.net
+	# eventConfig.cookieDomain = ".my-shop.com" #Optional - Domain name where the Queue-it session cookie should be saved
+	eventConfig.cookieValidityMinute = 15 #Optional - Validity of the Queue-it session cookie. Default is 10 minutes
+	eventConfig.extendCookieValidity = true #Optional - Should the Queue-it session cookie validity time be extended each time the validation runs? Default is true.
+	# eventConfig.culture = "da-DK" #Optional - Culture of the queue ticket layout in the format specified here: https://msdn.microsoft.com/en-us/library/ee825488(v=cs.20).aspx Default is to use what is specified on Event
+	# eventConfig.layoutName = "NameOfYourCustomLayout" #Optional - Name of the queue ticket layout - e.g. "Default layout by Queue-it". Default is to take what is specified on the Event
 
-		response = HttpResponse()
+	response = HttpResponse()
         httpContextProvider = Django_1_8_Provider(request, response)
         requestUrl = httpContextProvider.getOriginalRequestUrl()
         requestUrlWithoutToken = re.sub(
@@ -172,7 +170,7 @@ def index(request):
 
         queueitToken = request.GET.get(KnownUser.QUEUEIT_TOKEN_KEY)
 
-		validationResult = KnownUser.resolveQueueRequestByLocalConfig(
+	validationResult = KnownUser.resolveQueueRequestByLocalConfig(
             requestUrlWithoutToken, queueitToken, queueConfig, customerId, secretKey,
             httpContextProvider)
 
@@ -191,7 +189,7 @@ def index(request):
                 response.status_code = 302
                 response["Location"] = requestUrlWithoutToken
             
-		return response
+	return response
 
     except StandardError as stdErr:
         # Log the Error
@@ -213,9 +211,8 @@ If you have some static html pages (might be behind cache servers) and you have 
   src="//static.queue-it.net/script/queueconfigloader.min.js">
 </script>
 ```
-4) Use the following method to protect all dynamic calls (including dynamic pages and ajax calls).
+4) Use the following method (using Django v.1.8) to protect all dynamic calls (including dynamic pages and ajax calls).
 
-Example using Django v.1.8
 ```python
 from django.http import HttpResponse
 
