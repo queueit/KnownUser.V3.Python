@@ -233,8 +233,8 @@ def index(request):
         with open('integrationconfiguration.json', 'r') as myfile:
             integrationsConfigString = myfile.read()
 
-        customerId = "queueitknownusertst"
-        secretKey = "954656b7-bcfa-4de5-9c82-ff3805edd953737070fd-2f5d-4a11-b5ac-5c23e1b097b1"
+        customerId = "" # Your Queue-it customer ID
+        secretKey = "" # Your 72 char secret key as specified in Go Queue-it self-service platform
 
         response = HttpResponse()
         httpContextProvider = Django_1_8_Provider(request, response)
