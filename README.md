@@ -266,7 +266,6 @@ def index(request):
             # Request can continue, we remove queueittoken from url to avoid sharing of user specific token
             if (requestUrl != requestUrlWithoutToken
                     and not(validationResult.actionType == None)):
-                print "redirecting to: " + requestUrlWithoutToken
                 response.status_code = 302
                 response["Location"] = requestUrlWithoutToken                
             
