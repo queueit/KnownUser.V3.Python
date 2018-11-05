@@ -146,14 +146,14 @@ def index(request):
         customerId = "" # Your Queue-it customer ID
         secretKey = "" # Your 72 char secret key as specified in Go Queue-it self-service platform
 
-	eventConfig = QueueEventConfig()
-	eventConfig.eventId = "" # ID of the queue to use
-	eventConfig.queueDomain = "xxx.queue-it.net" #Domian name of the queue - usually in the format [CustomerId].queue-it.net
-	# eventConfig.cookieDomain = ".my-shop.com" #Optional - Domain name where the Queue-it session cookie should be saved
-	eventConfig.cookieValidityMinute = 15 #Optional - Validity of the Queue-it session cookie. Default is 10 minutes
-	eventConfig.extendCookieValidity = true #Optional - Should the Queue-it session cookie validity time be extended each time the validation runs? Default is true.
-	# eventConfig.culture = "da-DK" #Optional - Culture of the queue ticket layout in the format specified here: https://msdn.microsoft.com/en-us/library/ee825488(v=cs.20).aspx Default is to use what is specified on Event
-	# eventConfig.layoutName = "NameOfYourCustomLayout" #Optional - Name of the queue ticket layout - e.g. "Default layout by Queue-it". Default is to take what is specified on the Event
+	queueConfig = QueueEventConfig()
+	queueConfig.eventId = "" # ID of the queue to use
+	queueConfig.queueDomain = "xxx.queue-it.net" #Domian name of the queue - usually in the format [CustomerId].queue-it.net
+	# queueConfig.cookieDomain = ".my-shop.com" #Optional - Domain name where the Queue-it session cookie should be saved
+	queueConfig.cookieValidityMinute = 15 #Optional - Validity of the Queue-it session cookie. Default is 10 minutes
+	queueConfig.extendCookieValidity = true #Optional - Should the Queue-it session cookie validity time be extended each time the validation runs? Default is true.
+	# queueConfig.culture = "da-DK" #Optional - Culture of the queue ticket layout in the format specified here: https://msdn.microsoft.com/en-us/library/ee825488(v=cs.20).aspx Default is to use what is specified on Event
+	# queueConfig.layoutName = "NameOfYourCustomLayout" #Optional - Name of the queue ticket layout - e.g. "Default layout by Queue-it". Default is to take what is specified on the Event
 
 	response = HttpResponse()
         httpContextProvider = Django_1_8_Provider(request, response)
