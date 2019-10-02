@@ -109,9 +109,10 @@ def index(request):
 	return response
 
     except StandardError as stdErr:
-        # Log the Error
-        print stdErr.message
-        raise
+        # There was an error validationg the request
+        # Use your own logging framework to log the Exception
+        # This was a configuration exception, so we let the user continue
+        print stdErr.message        
 ```
 
 ## Alternative Implementation
@@ -190,9 +191,10 @@ def index(request):
 	return response
 
     except StandardError as stdErr:
-        # Log the Error
-        print stdErr.message
-        raise
+        # There was an error validationg the request
+        # Use your own logging framework to log the Exception
+        # This was a configuration exception, so we let the user continue
+        print stdErr.message        
 ```
 ### Protecting ajax calls on static pages
 If you have some static html pages (might be behind cache servers) and you have some ajax calls from those pages needed to be protected by KnownUser library you need to follow these steps:
@@ -271,7 +273,8 @@ def index(request):
         return response
 
     except StandardError as stdErr:
-        # Log the Error
-        print stdErr.message
-        raise
+        # There was an error validationg the request
+        # Use your own logging framework to log the Exception
+        # This was a configuration exception, so we let the user continue
+        print stdErr.message        
 ```
