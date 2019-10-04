@@ -109,9 +109,9 @@ def index(request):
 	return response
 
     except StandardError as stdErr:
-        # There was an error validationg the request
-        # Use your own logging framework to log the Exception
-        # This was a configuration exception, so we let the user continue
+        # There was an error validating the request
+        # Use your own logging framework to log the error
+        # This was a configuration error, so we let the user continue
         print stdErr.message        
 ```
 
@@ -191,9 +191,9 @@ def index(request):
 	return response
 
     except StandardError as stdErr:
-        # There was an error validationg the request
-        # Use your own logging framework to log the Exception
-        # This was a configuration exception, so we let the user continue
+        # There was an error validating the request
+        # Use your own logging framework to log the error
+        # This was a configuration error, so we let the user continue
         print stdErr.message        
 ```
 ### Protecting ajax calls on static pages
@@ -273,8 +273,8 @@ def index(request):
         return response
 
     except StandardError as stdErr:
-        # There was an error validationg the request
-        # Use your own logging framework to log the Exception
-        # This was a configuration exception, so we let the user continue
+        # There was an error validating the request
+        # Use your own logging framework to log the error
+        # This was a configuration error, so we let the user continue
         print stdErr.message        
 ```
