@@ -188,12 +188,6 @@ class ComparisonOperatorHelper:
         if (opt == "Contains"):
             return ComparisonOperatorHelper.contains(value, valueToCompare,
                                                      isNegative, ignoreCase)
-        if (opt == "StartsWith"):
-            return ComparisonOperatorHelper.startsWith(value, valueToCompare,
-                                                       isNegative, ignoreCase)
-        if (opt == "EndsWith"):
-            return ComparisonOperatorHelper.endsWith(value, valueToCompare,
-                                                     isNegative, ignoreCase)
         if (opt == "EqualsAny"):
             return ComparisonOperatorHelper.equalsAny(value, valuesToCompare,
                                                       isNegative, ignoreCase)
@@ -217,7 +211,7 @@ class ComparisonOperatorHelper:
 
     @staticmethod
     def contains(value, valueToCompare, isNegative, ignoreCase):
-        if (valueToCompare == "*"):
+        if (valueToCompare == "*" and value != ''):
             return True
 
         if (ignoreCase):
@@ -225,30 +219,6 @@ class ComparisonOperatorHelper:
             valueToCompare = valueToCompare.upper()
 
         evaluation = valueToCompare in value
-        if (isNegative):
-            return not evaluation
-        else:
-            return evaluation
-
-    @staticmethod
-    def startsWith(value, valueToCompare, isNegative, ignoreCase):
-        if (ignoreCase):
-            evaluation = value.upper().startswith(valueToCompare.upper())
-        else:
-            evaluation = value.startswith(valueToCompare)
-
-        if (isNegative):
-            return not evaluation
-        else:
-            return evaluation
-
-    @staticmethod
-    def endsWith(value, valueToCompare, isNegative, ignoreCase):
-        if (ignoreCase):
-            evaluation = value.upper().endswith(valueToCompare.upper())
-        else:
-            evaluation = value.endswith(valueToCompare)
-
         if (isNegative):
             return not evaluation
         else:

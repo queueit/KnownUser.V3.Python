@@ -2,7 +2,6 @@ import hmac
 import hashlib
 import urllib
 import time
-import json
 import urlparse
 from datetime import datetime, timedelta
 
@@ -19,15 +18,11 @@ class QueueitHelpers:
 
     @staticmethod
     def urlEncode(v):
-        return urllib.quote_plus(v)
+        return urllib.quote(v, safe='~')
 
     @staticmethod
     def urlDecode(v):
-        return urllib.unquote_plus(v)
-
-    @staticmethod
-    def jsonParse(json_string):
-        return json.loads(json_string)
+        return urllib.unquote(v)
 
     @staticmethod
     def urlParse(url_string):

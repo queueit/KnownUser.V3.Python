@@ -101,6 +101,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.cookieDomain = "testDomain"
         queueConfig.cookieValidityMinute = 10
         queueConfig.extendCookieValidity = False
+        queueConfig.actionName = "QueueAction"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
             httpContextProviderMock)
@@ -116,6 +117,8 @@ class TestUserInQueueService(unittest.TestCase):
             not userInQueueStateCookieRepositoryMock.expectCallAny('store'))
         assert (userInQueueStateCookieRepositoryMock.expectCall(
             'getState', 1, ["e1", 10, 'key', True]))
+        assert (queueConfig.actionName == result.actionName)
+        assert (not userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
     def test_ValidateQueueRequest_ValidState_ExtendableCookie_CookieExtensionFromConfig_DoNotRedirectDoStoreCookieWithExtension(
             self):
@@ -125,6 +128,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.cookieDomain = "testDomain"
         queueConfig.cookieValidityMinute = 10
         queueConfig.extendCookieValidity = True
+        queueConfig.actionName = "QueueAction"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
             httpContextProviderMock)
@@ -140,6 +144,8 @@ class TestUserInQueueService(unittest.TestCase):
         assert (userInQueueStateCookieRepositoryMock.expectCall(
             'store', 1,
             ["e1", 'queueId', None, 'testDomain', "disabled", "key"]))
+        assert (queueConfig.actionName == result.actionName)
+        assert (not userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
     def test_ValidateQueueRequest_ValidState_NoExtendableCookie_DoNotRedirectDoNotStoreCookieWithExtension(
             self):
@@ -148,6 +154,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.queueDomain = "testDomain"
         queueConfig.cookieValidityMinute = 10
         queueConfig.extendCookieValidity = True
+        queueConfig.actionName = "QueueAction"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
             httpContextProviderMock)
@@ -160,8 +167,9 @@ class TestUserInQueueService(unittest.TestCase):
         assert (not result.doRedirect())
         assert (result.eventId == 'e1')
         assert (result.queueId == "queueId")
-        assert (
-            not userInQueueStateCookieRepositoryMock.expectCallAny('store'))
+        assert (not userInQueueStateCookieRepositoryMock.expectCallAny('store'))
+        assert (queueConfig.actionName == result.actionName)
+        assert (not userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
     def test_ValidateQueueRequest_NoCookie_TampredToken_RedirectToErrorPageWithHashError_DoNotStoreCookie(
             self):
@@ -172,6 +180,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.cookieValidityMinute = 10
         queueConfig.extendCookieValidity = True
         queueConfig.version = 11
+        queueConfig.actionName = "Queue Action (._~-) !*|'\""
         url = "http://test.test.com?b=h"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
@@ -184,10 +193,12 @@ class TestUserInQueueService(unittest.TestCase):
             'False', None, 'idle', key)
         token = token.replace("False", 'True')
         expectedErrorUrl = "https://testDomain.com/error/hash/?c=testCustomer&e=e1" + \
-                "&ver=v3-py_mock-" + UserInQueueService.SDK_VERSION + \
-                    "&cver=11" + \
-                    "&queueittoken=" + token + \
-                    "&t=" + QueueitHelpers.urlEncode(url)
+                "&ver=" + UserInQueueService.SDK_VERSION + \
+                "&kupver=mock" + \
+                "&cver=11" + \
+                "&man=" + QueueitHelpers.urlEncode(queueConfig.actionName) + \
+                "&queueittoken=" + token + \
+                "&t=" + QueueitHelpers.urlEncode(url)
         testObject = UserInQueueService(httpContextProviderMock,
                                         userInQueueStateCookieRepositoryMock)
         result = testObject.validateQueueRequest(url, token, queueConfig,
@@ -203,6 +214,10 @@ class TestUserInQueueService(unittest.TestCase):
                 < 100)
         urlWithoutTimeStamp = re.sub("&ts=[^&]*", "", result.redirectUrl)
         assert (urlWithoutTimeStamp.upper() == expectedErrorUrl.upper())
+        assert (queueConfig.actionName == result.actionName)
+        assert (queueConfig.actionName == result.actionName)
+        assert (userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
+        assert (not userInQueueStateCookieRepositoryMock.expectCallAny('store'))
 
     def test_ValidateQueueRequest_NoCookie_ExpiredTimeStampInToken_RedirectToErrorPageWithTimeStampError_DoNotStoreCookie(
             self):
@@ -213,6 +228,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.cookieValidityMinute = 10
         queueConfig.extendCookieValidity = True
         queueConfig.version = 11
+        queueConfig.actionName = "Queue Action (._~-) !*|'\""
         url = "http://test.test.com?b=h"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
@@ -224,8 +240,10 @@ class TestUserInQueueService(unittest.TestCase):
             str((QueueitHelpers.getCurrentTime() - (3 * 60))),
             'False', None, 'queue', key)
         expectedErrorUrl = "https://testDomain.com/error/timestamp/?c=testCustomer&e=e1" + \
-                    "&ver=v3-py_mock-" + UserInQueueService.SDK_VERSION + \
+                    "&ver=" + UserInQueueService.SDK_VERSION + \
+                    "&kupver=mock" + \
                     "&cver=11" + \
+                    "&man=" + QueueitHelpers.urlEncode(queueConfig.actionName) + \
                     "&queueittoken=" + token + \
                     "&t=" + QueueitHelpers.urlEncode(url)
         testObject = UserInQueueService(httpContextProviderMock,
@@ -243,6 +261,9 @@ class TestUserInQueueService(unittest.TestCase):
                 < 100)
         urlWithoutTimeStamp = re.sub("&ts=[^&]*", "", result.redirectUrl)
         assert (urlWithoutTimeStamp.upper() == expectedErrorUrl.upper())
+        assert (userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
+        assert (queueConfig.actionName == result.actionName)
+        assert (not userInQueueStateCookieRepositoryMock.expectCallAny('store'))
 
     def test_ValidateQueueRequest_NoCookie_EventIdMismatch_RedirectToErrorPageWithEventIdMissMatchError_DoNotStoreCookie(
             self):
@@ -253,6 +274,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.cookieValidityMinute = 10
         queueConfig.extendCookieValidity = True
         queueConfig.version = 11
+        queueConfig.actionName = "Queue Action (._~-) !*|'\""
         url = "http://test.test.com?b=h"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
@@ -264,7 +286,10 @@ class TestUserInQueueService(unittest.TestCase):
             str((QueueitHelpers.getCurrentTime() - (3 * 60))),
             'False', None, 'queue', key)
         expectedErrorUrl = "https://testDomain.com/error/eventid/?c=testCustomer&e=e2" + \
-                "&ver=v3-py_mock-" + UserInQueueService.SDK_VERSION + "&cver=11" + \
+                "&ver=" + UserInQueueService.SDK_VERSION + \
+                "&kupver=mock" + \
+                "&cver=11" + \
+                "&man=" + QueueitHelpers.urlEncode(queueConfig.actionName) + \
                 "&queueittoken=" + token + \
                 "&t=" + QueueitHelpers.urlEncode(url)
         testObject = UserInQueueService(httpContextProviderMock,
@@ -282,6 +307,10 @@ class TestUserInQueueService(unittest.TestCase):
                 < 100)
         urlWithoutTimeStamp = re.sub("&ts=[^&]*", "", result.redirectUrl)
         assert (urlWithoutTimeStamp.upper() == expectedErrorUrl.upper())
+        assert (userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
+        assert (queueConfig.actionName == result.actionName)
+        assert (not userInQueueStateCookieRepositoryMock.expectCallAny('store'))
+
 
     def test_ValidateQueueRequest_NoCookie_ValidToken_ExtendableCookie_DoNotRedirect_StoreExtendableCookie(
             self):
@@ -293,6 +322,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.cookieDomain = "testDomain"
         queueConfig.extendCookieValidity = True
         queueConfig.version = 11
+        queueConfig.actionName = "QueueAction"
         url = "http://test.test.com?b=h"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
@@ -313,6 +343,8 @@ class TestUserInQueueService(unittest.TestCase):
         assert (result.redirectType == 'queue')
         assert (userInQueueStateCookieRepositoryMock.expectCall(
             'store', 1, ["e1", 'queueId', None, 'testDomain', 'queue', key]))
+        assert (queueConfig.actionName == result.actionName)
+        assert (not userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
     def test_ValidateQueueRequest_NoCookie_ValidToken_CookieValidityMinuteFromToken_DoNotRedirect_StoreNonExtendableCookie(
             self):
@@ -323,6 +355,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.cookieValidityMinute = 30
         queueConfig.cookieDomain = "testDomain"
         queueConfig.extendCookieValidity = True
+        queueConfig.actionName = "QueueAction"
         queueConfig.version = 11
         url = "http://test.test.com?b=h"
         httpContextProviderMock = HttpContextProviderMock()
@@ -346,6 +379,8 @@ class TestUserInQueueService(unittest.TestCase):
             userInQueueStateCookieRepositoryMock.expectCall(
                 'store', 1,
                 ["e1", 'queueId', 3, 'testDomain', 'DirectLink', key]))
+        self.assertEquals(queueConfig.actionName, result.actionName)
+        assert (not userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
     def test_NoCookie_NoValidToken_WithoutToken_RedirectToQueue(self):
         key = "4e1db821-a825-49da-acd0-5d376f2068db"
@@ -357,6 +392,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.version = 11
         queueConfig.culture = 'en-US'
         queueConfig.layoutName = 'testlayout'
+        queueConfig.actionName = "Queue Action (._~-) !*|'\""
         url = "http://test.test.com?b=h"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
@@ -365,7 +401,11 @@ class TestUserInQueueService(unittest.TestCase):
             StateInfo(False, None, None, None))
         token = ""
         expectedRedirectUrl = "https://testDomain.com/?c=testCustomer&e=e1" + \
-                "&ver=v3-py_mock-" + UserInQueueService.SDK_VERSION + "&cver=11"  + "&cid=en-US" + \
+                "&ver=" + UserInQueueService.SDK_VERSION + \
+                "&kupver=mock" + \
+                "&cver=11"  + \
+                "&man=" + QueueitHelpers.urlEncode(queueConfig.actionName) + \
+                "&cid=en-US" + \
                 "&l=testlayout"+"&t=" + QueueitHelpers.urlEncode(url)
         testObject = UserInQueueService(httpContextProviderMock,
                                         userInQueueStateCookieRepositoryMock)
@@ -377,6 +417,8 @@ class TestUserInQueueService(unittest.TestCase):
         assert (result.eventId == 'e1')
         assert (result.queueId == None)
         assert (result.redirectUrl.upper() == expectedRedirectUrl.upper())
+        assert (queueConfig.actionName == result.actionName)
+        assert (userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
     def test_ValidateRequest_NoCookie_WithoutToken_RedirectToQueue_NotargetUrl(
             self):
@@ -389,6 +431,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.version = 11
         queueConfig.culture = 'en-US'
         queueConfig.layoutName = 'testlayout'
+        queueConfig.actionName = "Queue Action (._~-) !*|'\""
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
             httpContextProviderMock)
@@ -396,7 +439,11 @@ class TestUserInQueueService(unittest.TestCase):
             StateInfo(False, None, None, None))
         token = ""
         expectedRedirectUrl = "https://testDomain.com/?c=testCustomer&e=e1" + \
-                "&ver=v3-py_mock-" + UserInQueueService.SDK_VERSION + "&cver=11" + "&cid=en-US" + \
+                "&ver=" + UserInQueueService.SDK_VERSION + \
+                "&kupver=mock" + \
+                "&cver=11" + \
+                "&man=" + QueueitHelpers.urlEncode(queueConfig.actionName) + \
+                "&cid=en-US" + \
                 "&l=testlayout"
         testObject = UserInQueueService(httpContextProviderMock,
                                         userInQueueStateCookieRepositoryMock)
@@ -408,6 +455,8 @@ class TestUserInQueueService(unittest.TestCase):
         assert (result.eventId == 'e1')
         assert (result.queueId == None)
         assert (result.redirectUrl.upper() == expectedRedirectUrl.upper())
+        assert (queueConfig.actionName == result.actionName)
+        assert (userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
     def test_ValidateQueueRequest_NoCookie_InValidToken(self):
         key = "4e1db821-a825-49da-acd0-5d376f2068db"
@@ -419,6 +468,7 @@ class TestUserInQueueService(unittest.TestCase):
         queueConfig.version = 11
         queueConfig.culture = 'en-US'
         queueConfig.layoutName = 'testlayout'
+        queueConfig.actionName = "QueueAction"
         url = "http://test.test.com?b=h"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
@@ -438,6 +488,8 @@ class TestUserInQueueService(unittest.TestCase):
         assert (result.queueId == None)
         assert (result.redirectUrl.startswith(
             "https://testDomain.com/error/hash/?c=testCustomer&e=e1"))
+        assert (queueConfig.actionName == result.actionName)
+        assert (userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
     def test_validateCancelRequest(self):
         cancelConfig = CancelEventConfig()
@@ -445,13 +497,14 @@ class TestUserInQueueService(unittest.TestCase):
         cancelConfig.queueDomain = "testDomain.com"
         cancelConfig.cookieDomain = "my-cookie-domain"
         cancelConfig.version = 10
+        cancelConfig.actionName = "TestCancelAction"
         url = "http://test.test.com?b=h"
         httpContextProviderMock = HttpContextProviderMock()
         userInQueueStateCookieRepositoryMock = UserInQueueStateCookieRepositoryMock(
             httpContextProviderMock)
         userInQueueStateCookieRepositoryMock.arrayReturns['getState'].append(
             StateInfo(True, "queueId", 3, "idle"))
-        expectedUrl = "https://testDomain.com/cancel/testCustomer/e1/?c=testCustomer&e=e1&ver=v3-py_mock-" + UserInQueueService.SDK_VERSION + "&cver=10&r=" + QueueitHelpers.urlEncode(
+        expectedUrl = "https://testDomain.com/cancel/testCustomer/e1/?c=testCustomer&e=e1&ver=" + UserInQueueService.SDK_VERSION + "&kupver=mock&cver=10&man=" + cancelConfig.actionName + "&r=" + QueueitHelpers.urlEncode(
             url)
         testObject = UserInQueueService(httpContextProviderMock,
                                         userInQueueStateCookieRepositoryMock)
@@ -464,6 +517,7 @@ class TestUserInQueueService(unittest.TestCase):
         assert (result.queueId == "queueId")
         assert (result.eventId == 'e1')
         assert (expectedUrl == result.redirectUrl)
+        assert (cancelConfig.actionName == result.actionName)
 
     def test_getIgnoreActionResult(self):
         httpContextProviderMock = HttpContextProviderMock()
@@ -472,10 +526,11 @@ class TestUserInQueueService(unittest.TestCase):
 
         testObject = UserInQueueService(httpContextProviderMock,
                                         userInQueueStateCookieRepositoryMock)
-        result = testObject.getIgnoreActionResult()
+        result = testObject.getIgnoreActionResult("TestIgnoreAction")
 
         assert (not result.doRedirect())
         assert (result.eventId == None)
         assert (result.queueId == None)
         assert (result.redirectUrl == None)
         assert (result.actionType == 'Ignore')
+        assert (result.actionName == 'TestIgnoreAction')

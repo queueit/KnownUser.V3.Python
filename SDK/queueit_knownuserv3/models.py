@@ -23,13 +23,14 @@ class CancelEventConfig:
         self.queueDomain = None
         self.cookieDomain = None
         self.version = None
+        self.actionName = 'unspecified'
 
     def toString(self):
         return "EventId:" + Utils.toString(
             self.eventId) + "&Version:" + Utils.toString(
                 self.version) + "&QueueDomain:" + Utils.toString(
                     self.queueDomain) + "&CookieDomain:" + Utils.toString(
-                        self.cookieDomain)
+                        self.cookieDomain) + "&ActionName:" + Utils.toString(self.actionName)
 
 
 class QueueEventConfig:
@@ -42,6 +43,7 @@ class QueueEventConfig:
         self.cookieValidityMinute = None
         self.cookieDomain = None
         self.version = None
+        self.actionName = 'unspecified'
 
     def toString(self):
         return "EventId:" + Utils.toString(
@@ -55,18 +57,18 @@ class QueueEventConfig:
                         self.cookieValidityMinute
                     ) + "&LayoutName:" + Utils.toString(
                         self.layoutName) + "&Culture:" + Utils.toString(
-                            self.culture)
+                            self.culture)  + "&ActionName:" + Utils.toString(self.actionName)
 
 
 class RequestValidationResult:
-    def __init__(self, actionType, eventId, queueId, redirectUrl,
-                 redirectType):
+    def __init__(self, actionType, eventId, queueId, redirectUrl, redirectType, actionName):
         self.actionType = actionType
         self.eventId = eventId
         self.queueId = queueId
         self.redirectUrl = redirectUrl
         self.redirectType = redirectType
         self.isAjaxResult = False
+        self.actionName = actionName
 
     def doRedirect(self):
         return not Utils.isNilOrEmpty(self.redirectUrl)

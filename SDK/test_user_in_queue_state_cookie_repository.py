@@ -59,8 +59,9 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
         self.assertEqual(state.queueId, queueId)
         self.assertTrue(state.isStateExtendable())
         self.assertEqual(state.redirectType, 'Queue')
-        expirationTimeDelta = wfHandler.cookieList[cookieKey]["expiration"] - QueueitHelpers.getCookieExpirationDate(
-        )
+        expirationTimeDelta = wfHandler.cookieList[cookieKey]["expiration"].replace(
+            microsecond=0) - QueueitHelpers.getCookieExpirationDate().replace(
+                microsecond=0)
         assert (str(expirationTimeDelta) == "0:00:00")
         self.assertEqual(wfHandler.cookieList[cookieKey]["cookieDomain"],
                          cookieDomain)
@@ -82,8 +83,9 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
         assert (state.isStateExtendable() == False)
         assert (state.redirectType == 'Idle')
         assert (state.fixedCookieValidityMinutes == 3)
-        expirationTimeDelta = wfHandler.cookieList[cookieKey]["expiration"] - QueueitHelpers.getCookieExpirationDate(
-        )
+        expirationTimeDelta = wfHandler.cookieList[cookieKey]["expiration"].replace(
+            microsecond=0) - QueueitHelpers.getCookieExpirationDate().replace(
+                microsecond=0)
         assert (str(expirationTimeDelta) == "0:00:00")
         self.assertEqual(wfHandler.cookieList[cookieKey]["cookieDomain"],
                          cookieDomain)
@@ -218,8 +220,9 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
         assert (state.queueId == queueId)
         assert (state.isStateExtendable())
 
-        expirationTimeDelta = wfHandler.cookieList[cookieKey]["expiration"] - QueueitHelpers.getCookieExpirationDate(
-        )
+        expirationTimeDelta = wfHandler.cookieList[cookieKey]["expiration"].replace(
+            microsecond=0) - QueueitHelpers.getCookieExpirationDate().replace(
+                microsecond=0)
         assert (str(expirationTimeDelta) == "0:00:00")
         assert (
             wfHandler.cookieList[cookieKey]["cookieDomain"] == cookieDomain)
@@ -250,8 +253,7 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
         wfHandler.setCookie(
             cookieKey, "EventId=" + eventId + "&QueueId=" + queueId +
             "&RedirectType=queue&IssueTime=" + issueTime + "&Hash=" +
-            hashValue, QueueitHelpers.getCookieExpirationDate(),
-            cookieDomain)
+            hashValue, QueueitHelpers.getCookieExpirationDate(), cookieDomain)
         state = testObject.getState(eventId, 10, secretKey, True)
         assert (state.isStateExtendable())
         assert (state.isValid)
@@ -266,15 +268,13 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
         cookieKey = UserInQueueStateCookieRepository.getCookieKey(eventId)
         wfHandler = HttpContextProviderMock()
         testObject = UserInQueueStateCookieRepository(wfHandler)
-        issueTime = str(
-            (QueueitHelpers.getCurrentTime() - (11 * 60)))
+        issueTime = str((QueueitHelpers.getCurrentTime() - (11 * 60)))
         hashValue = UnitTestHelper.generateHash(eventId, queueId, None,
                                                 "queue", issueTime, secretKey)
         wfHandler.setCookie(
             cookieKey, "EventId=" + eventId + "&QueueId=" + queueId +
             "&RedirectType=queue&IssueTime=" + issueTime + "&Hash=" +
-            hashValue, QueueitHelpers.getCookieExpirationDate(),
-            cookieDomain)
+            hashValue, QueueitHelpers.getCookieExpirationDate(), cookieDomain)
         state = testObject.getState(eventId, 10, secretKey, True)
         assert (not state.isValid)
 
@@ -286,16 +286,14 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
         cookieKey = UserInQueueStateCookieRepository.getCookieKey(eventId)
         wfHandler = HttpContextProviderMock()
         testObject = UserInQueueStateCookieRepository(wfHandler)
-        issueTime = str(
-            (QueueitHelpers.getCurrentTime() - (4 * 60)))
+        issueTime = str((QueueitHelpers.getCurrentTime() - (4 * 60)))
         hashValue = UnitTestHelper.generateHash(eventId, queueId, 3, "idle",
                                                 issueTime, secretKey)
         wfHandler.setCookie(
             cookieKey, "EventId=" + eventId + "&QueueId=" + queueId +
-            "&FixedValidityMins=3&RedirectType=idle&IssueTime=" + issueTime +
-            "&Hash=" + hashValue,
-            QueueitHelpers.getCookieExpirationDate(),
-            cookieDomain)
+            "&FixedValidityMins=3&RedirectType=idle&IssueTime=" +
+            issueTime + "&Hash=" + hashValue,
+            QueueitHelpers.getCookieExpirationDate(), cookieDomain)
         state = testObject.getState(eventId, 10, secretKey, True)
         assert (not state.isValid)
 
@@ -312,10 +310,9 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
                                                 issueTime, secretKey)
         wfHandler.setCookie(
             cookieKey, "EventId=" + eventId + "&QueueId=" + queueId +
-            "&FixedValidityMins=3&RedirectType=idle&IssueTime=" + issueTime +
-            "&Hash=" + hashValue,
-            QueueitHelpers.getCookieExpirationDate(),
-            cookieDomain)
+            "&FixedValidityMins=3&RedirectType=idle&IssueTime=" +
+            issueTime + "&Hash=" + hashValue,
+            QueueitHelpers.getCookieExpirationDate(), cookieDomain)
         state = testObject.getState(eventId, 10, secretKey, True)
         assert (not state.isStateExtendable())
         assert (state.isValid)

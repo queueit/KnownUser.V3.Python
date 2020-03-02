@@ -4,7 +4,9 @@ from queueit_helpers import QueueitHelpers
 from models import Utils, KnownUserError, ActionTypes, RequestValidationResult, QueueEventConfig, CancelEventConfig
 from integration_config_helpers import IntegrationEvaluator
 from queue_url_params import QueueUrlParams
-
+from connector_diagnostics import ConnectorDiagnostics
+import json
+import sys
 
 class KnownUser:
     QUEUEIT_TOKEN_KEY = "queueittoken"
@@ -56,24 +58,6 @@ class KnownUser:
                 "x-forwarded-proto")
 
     @staticmethod
-    def __getIsDebug(queueitToken, secretKey):
-        qParams = QueueUrlParams.extractQueueParams(queueitToken)
-        if (qParams == None):
-            return False
-
-        redirectType = qParams.redirectType
-        if (redirectType == None):
-            return False
-
-        if (redirectType.upper() == "DEBUG"):
-            calculatedHash = QueueitHelpers.hmacSha256Encode(
-                qParams.queueITTokenWithoutHash, secretKey)
-            valid = qParams.hashCode == calculatedHash
-            return valid
-
-        return False
-
-    @staticmethod
     def __setDebugCookie(debugEntries, httpContextProvider):
         if (debugEntries == None or len(debugEntries) == 0):
             return
@@ -85,13 +69,18 @@ class KnownUser:
         cookieValue = cookieValue.strip('|')
         httpContextProvider.setCookie(KnownUser.QUEUEIT_DEBUG_KEY, cookieValue,
                                       None, None)
+    @staticmethod
+    def __getRunTime():
+        return sys.version
 
     @staticmethod
     def __resolveQueueRequestByLocalConfig(targetUrl, queueitToken,
                                            queueConfig, customerId, secretKey,
-                                           httpContextProvider, debugEntries):
-        isDebug = KnownUser.__getIsDebug(queueitToken, secretKey)
+                                           httpContextProvider, debugEntries, isDebug):
         if (isDebug):
+            debugEntries["SdkVersion"] = UserInQueueService.SDK_VERSION
+            debugEntries["Connector"] = httpContextProvider.getProviderName()
+            debugEntries["Runtime"] = KnownUser.__getRunTime()
             debugEntries["TargetUrl"] = targetUrl
             debugEntries["QueueitToken"] = queueitToken
             debugEntries[
@@ -141,11 +130,13 @@ class KnownUser:
     @staticmethod
     def __cancelRequestByLocalConfig(targetUrl, queueitToken, cancelConfig,
                                      customerId, secretKey,
-                                     httpContextProvider, debugEntries):
-        targetUrl = KnownUser.__generateTargetUrl(targetUrl,
-                                                  httpContextProvider)
-        isDebug = KnownUser.__getIsDebug(queueitToken, secretKey)
+                                     httpContextProvider, debugEntries, isDebug):
+        targetUrl = KnownUser.__generateTargetUrl(targetUrl, httpContextProvider)
+
         if (isDebug):
+            debugEntries["SdkVersion"] = UserInQueueService.SDK_VERSION
+            debugEntries["Connector"] = httpContextProvider.getProviderName()
+            debugEntries["Runtime"] = KnownUser.__getRunTime()
             debugEntries["TargetUrl"] = targetUrl
             debugEntries["QueueitToken"] = queueitToken
             debugEntries[
@@ -188,13 +179,14 @@ class KnownUser:
     @staticmethod
     def __handleQueueAction(currentUrlWithoutQueueITToken, queueitToken,
                             customerIntegration, customerId, secretKey,
-                            matchedConfig, httpContextProvider, debugEntries):
+                            matchedConfig, httpContextProvider, debugEntries, isDebug):
         queueConfig = QueueEventConfig()
         queueConfig.eventId = matchedConfig["EventId"]
         queueConfig.queueDomain = matchedConfig["QueueDomain"]
         queueConfig.layoutName = matchedConfig["LayoutName"]
         queueConfig.culture = matchedConfig["Culture"]
         queueConfig.cookieDomain = matchedConfig["CookieDomain"]
+        queueConfig.actionName = matchedConfig["Name"]
         queueConfig.extendCookieValidity = matchedConfig[
             "ExtendCookieValidity"]
         queueConfig.cookieValidityMinute = matchedConfig[
@@ -213,21 +205,22 @@ class KnownUser:
 
         return KnownUser.__resolveQueueRequestByLocalConfig(
             targetUrl, queueitToken, queueConfig, customerId, secretKey,
-            httpContextProvider, debugEntries)
+            httpContextProvider, debugEntries, isDebug)
 
     @staticmethod
     def __handleCancelAction(currentUrlWithoutQueueITToken, queueitToken,
                              customerIntegration, customerId, secretKey,
-                             matchedConfig, httpContextProvider, debugEntries):
+                             matchedConfig, httpContextProvider, debugEntries, isDebug):
         cancelConfig = CancelEventConfig()
         cancelConfig.eventId = matchedConfig["EventId"]
         cancelConfig.queueDomain = matchedConfig["QueueDomain"]
         cancelConfig.cookieDomain = matchedConfig["CookieDomain"]
         cancelConfig.version = customerIntegration["Version"]
+        cancelConfig.actionName = matchedConfig["Name"]
 
         return KnownUser.__cancelRequestByLocalConfig(
             currentUrlWithoutQueueITToken, queueitToken, cancelConfig,
-            customerId, secretKey, httpContextProvider, debugEntries)
+            customerId, secretKey, httpContextProvider, debugEntries, isDebug)
 
     @staticmethod
     def extendQueueCookie(eventId, cookieValidityMinute, cookieDomain,
@@ -253,12 +246,19 @@ class KnownUser:
                                          customerId, secretKey,
                                          httpContextProvider):
         debugEntries = {}
+        connectorDiagnostics = ConnectorDiagnostics.verify(customerId, secretKey, queueitToken)
+        if (connectorDiagnostics.hasError):
+            return connectorDiagnostics.validationResult
         try:
             targetUrl = KnownUser.__generateTargetUrl(targetUrl,
                                                       httpContextProvider)
             return KnownUser.__resolveQueueRequestByLocalConfig(
                 targetUrl, queueitToken, queueConfig, customerId, secretKey,
-                httpContextProvider, debugEntries)
+                httpContextProvider, debugEntries, connectorDiagnostics.isEnabled)
+        except Exception as e:
+            if (connectorDiagnostics.isEnabled):
+                debugEntries["Exception"] = e.message
+            raise e
         finally:
             KnownUser.__setDebugCookie(debugEntries, httpContextProvider)
 
@@ -267,65 +267,67 @@ class KnownUser:
             currentUrlWithoutQueueITToken, queueitToken,
             integrationsConfigString, customerId, secretKey,
             httpContextProvider):
-        if (Utils.isNilOrEmpty(currentUrlWithoutQueueITToken)):
-            raise KnownUserError(
-                "currentUrlWithoutQueueITToken can not be none or empty.")
-
-        if (Utils.isNilOrEmpty(integrationsConfigString)):
-            raise KnownUserError(
-                "integrationsConfigString can not be none or empty.")
 
         debugEntries = {}
+        customerIntegration = None
+        connectorDiagnostics = ConnectorDiagnostics.verify(customerId, secretKey, queueitToken)
+        if (connectorDiagnostics.hasError):
+            return connectorDiagnostics.validationResult
         try:
-            customerIntegration = QueueitHelpers.jsonParse(
-                integrationsConfigString)
-
-            isDebug = KnownUser.__getIsDebug(queueitToken, secretKey)
-            if (isDebug):
-                debugEntries["ConfigVersion"] = customerIntegration["Version"]
+            if (connectorDiagnostics.isEnabled):
+                debugEntries["SdkVersion"] = UserInQueueService.SDK_VERSION
+                debugEntries["Connector"] = httpContextProvider.getProviderName()
+                debugEntries["Runtime"] = KnownUser.__getRunTime()
                 debugEntries["PureUrl"] = currentUrlWithoutQueueITToken
                 debugEntries["QueueitToken"] = queueitToken
-                debugEntries[
-                    "OriginalUrl"] = httpContextProvider.getOriginalRequestUrl(
-                    )
-                KnownUser.__logMoreRequestDetails(debugEntries,
-                                                  httpContextProvider)
+                debugEntries["OriginalUrl"] = httpContextProvider.getOriginalRequestUrl()
+                KnownUser.__logMoreRequestDetails(debugEntries, httpContextProvider)
 
+            customerIntegration = json.loads(integrationsConfigString)
+            if (connectorDiagnostics.isEnabled):
+                debugEntries["ConfigVersion"] = customerIntegration["Version"] if customerIntegration and \
+                                                                              customerIntegration["Version"] else "NULL"
+            if (Utils.isNilOrEmpty(currentUrlWithoutQueueITToken)):
+                raise KnownUserError(
+                    "currentUrlWithoutQueueITToken can not be none or empty.")
+
+            if (not customerIntegration or not customerIntegration["Version"]):
+                raise KnownUserError(
+                    "integrationsConfigString can not be none or empty.")
             matchedConfig = IntegrationEvaluator().getMatchedIntegrationConfig(
                 customerIntegration, currentUrlWithoutQueueITToken,
                 httpContextProvider)
 
-            if (isDebug):
+            if (connectorDiagnostics.isEnabled):
                 if (matchedConfig == None):
                     debugEntries["MatchedConfig"] = "NULL"
                 else:
                     debugEntries["MatchedConfig"] = matchedConfig["Name"]
 
             if (matchedConfig is None):
-                return RequestValidationResult(None, None, None, None, None)
+                return RequestValidationResult(None, None, None, None, None, None)
 
             if (matchedConfig["ActionType"] == ActionTypes.QUEUE):
                 return KnownUser.__handleQueueAction(
                     currentUrlWithoutQueueITToken, queueitToken,
                     customerIntegration, customerId, secretKey, matchedConfig,
-                    httpContextProvider, debugEntries)
+                    httpContextProvider, debugEntries, connectorDiagnostics.isEnabled)
             elif (matchedConfig["ActionType"] == ActionTypes.CANCEL):
                 return KnownUser.__handleCancelAction(
                     currentUrlWithoutQueueITToken, queueitToken,
                     customerIntegration, customerId, secretKey, matchedConfig,
-                    httpContextProvider, debugEntries)
+                    httpContextProvider, debugEntries, connectorDiagnostics.isEnabled)
             else:  # for all unknown types default to 'Ignore'
                 userInQueueService = KnownUser.__getUserInQueueService(
-                    httpContextProvider)
-                result = userInQueueService.getIgnoreActionResult()
+                    httpContextProvider) 
+                result = userInQueueService.getIgnoreActionResult(matchedConfig['Name'])
                 result.isAjaxResult = KnownUser.__isQueueAjaxCall(
                     httpContextProvider)
                 return result
-
-        except StandardError as stdErr:
-            raise KnownUserError(
-                "integrationConfiguration text was not valid: " +
-                stdErr.message)
+        except Exception as e:
+            if (connectorDiagnostics.isEnabled):
+                debugEntries["Exception"] = e.message
+            raise e
         finally:
             KnownUser.__setDebugCookie(debugEntries, httpContextProvider)
             pass
@@ -334,9 +336,16 @@ class KnownUser:
     def cancelRequestByLocalConfig(targetUrl, queueitToken, cancelConfig,
                                    customerId, secretKey, httpContextProvider):
         debugEntries = {}
+        connectorDiagnostics = ConnectorDiagnostics.verify(customerId, secretKey, queueitToken)
+        if (connectorDiagnostics.hasError):
+            return connectorDiagnostics.validationResult
         try:
             return KnownUser.__cancelRequestByLocalConfig(
                 targetUrl, queueitToken, cancelConfig, customerId, secretKey,
-                httpContextProvider, debugEntries)
+                httpContextProvider, debugEntries, connectorDiagnostics.isEnabled)
+        except Exception as e:
+            if (connectorDiagnostics.isEnabled):
+                debugEntries["Exception"] = e.message
+            raise e
         finally:
             KnownUser.__setDebugCookie(debugEntries, httpContextProvider)

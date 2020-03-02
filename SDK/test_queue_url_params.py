@@ -23,17 +23,31 @@ class TestQueueUrlParams(unittest.TestCase):
         )
 
     def test_extractQueueParams_notValidToken(self):
-        queueITToken = "ts_sasa~cv_adsasa~ce_falwwwse~q_944c1f44-60dd-4e37-aabc-f3e4bb1c8895"
+        queueITToken = "ts_sasa~cv_adsasa~ce_falwwwse~q_944c1f44-60dd-4e37-aabc-f3e4bb1c8895~h_218b734e-d5be-4b60-ad66-9b1b326266e2"
+        queueitTokenWithoutHash = "ts_sasa~cv_adsasa~ce_falwwwse~q_944c1f44-60dd-4e37-aabc-f3e4bb1c8895";
         result = QueueUrlParams.extractQueueParams(queueITToken)
         self.assertEqual(result.eventId, "")
         self.assertEqual(result.timeStamp, 0)
         self.assertEqual(result.extendableCookie, False)
         self.assertEqual(result.queueITToken, queueITToken)
         self.assertEqual(result.cookieValidityMinutes, None)
-        self.assertEqual(result.queueId,
-                         "944c1f44-60dd-4e37-aabc-f3e4bb1c8895")
+        self.assertEqual(result.queueId, "944c1f44-60dd-4e37-aabc-f3e4bb1c8895")
+        self.assertEqual(result.hashCode, "218b734e-d5be-4b60-ad66-9b1b326266e2")
+        self.assertEqual(result.queueITTokenWithoutHash, queueitTokenWithoutHash)
+
+    def test_ExtractQueueParams_Using_QueueitToken_With_No_Values(self):
+        queueITToken = "e~q~ts~ce~rt~h"
+        result = QueueUrlParams.extractQueueParams(queueITToken)
+        self.assertEqual(result.eventId, "")
+        self.assertEqual(result.timeStamp, 0)
+        self.assertEqual(result.extendableCookie, False)
+        self.assertEqual(result.queueITToken, queueITToken)
+        self.assertEqual(result.cookieValidityMinutes, None)
+        self.assertEqual(result.queueId, "")
         self.assertEqual(result.hashCode, "")
-        self.assertEqual(
-            result.queueITTokenWithoutHash,
-            "ts_sasa~cv_adsasa~ce_falwwwse~q_944c1f44-60dd-4e37-aabc-f3e4bb1c8895"
-        )
+        self.assertEqual(result.queueITTokenWithoutHash, queueITToken)
+
+    def test_extractQueueParams_using_partial_queueToken_expect_none(self):
+        queueITToken = ""
+        result = QueueUrlParams.extractQueueParams(queueITToken)
+        self.assertEqual(result, None)

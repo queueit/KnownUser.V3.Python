@@ -515,30 +515,8 @@ class TestComparisonOperatorHelper(unittest.TestCase):
             "Contains", True, False, "test_test1", "test1", None))
         assert (ComparisonOperatorHelper.evaluate(
             "Contains", False, False, "test_dsdsdsdtest1", "*", None))
-
-    def test_evaluate_startsWith_operator(self):
-        assert (ComparisonOperatorHelper.evaluate("StartsWith", False, False,
-                                                  None, None, None))
-        assert (ComparisonOperatorHelper.evaluate(
-            "StartsWith", False, False, "test1_test1_test", "test1", None))
         assert (not ComparisonOperatorHelper.evaluate(
-            "StartsWith", False, False, "test1_test1_test", "Test1", None))
-        assert (ComparisonOperatorHelper.evaluate(
-            "StartsWith", False, True, "test1_test1_test", "Test1", None))
-        assert (not ComparisonOperatorHelper.evaluate(
-            "StartsWith", True, True, "test1_test1_test", "Test1", None))
-
-    def test_evaluate_sWith_operator(self):
-        assert (ComparisonOperatorHelper.evaluate("EndsWith", False, False,
-                                                  None, None, None))
-        assert (ComparisonOperatorHelper.evaluate(
-            "EndsWith", False, False, "test1_test1_testshop", "shop", None))
-        assert (not ComparisonOperatorHelper.evaluate(
-            "EndsWith", False, False, "test1_test1_testshop2", "shop", None))
-        assert (ComparisonOperatorHelper.evaluate(
-            "EndsWith", False, True, "test1_test1_testshop", "Shop", None))
-        assert (not ComparisonOperatorHelper.evaluate(
-            "EndsWith", True, True, "test1_test1_testshop", "Shop", None))
+            "Contains", False, False, "", "*", None))
 
     def test_evaluate_equalsAny_operator(self):
         assert (ComparisonOperatorHelper.evaluate("EqualsAny", False, False,
