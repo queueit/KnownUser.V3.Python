@@ -92,11 +92,10 @@ def index(request):
             customerId, secretKey, httpContextProvider)
 
         if (validationResult.doRedirect()):
-            response["Expires"] = "Fri, 01 Jan 1990 00:00:00 GMT"
-            response[
-                "Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
             response["Pragma"] = "no-cache"
-			response.status_code = 302
+	    response["Expires"] = "Fri, 01 Jan 1990 00:00:00 GMT"
+	    response.status_code = 302
             response["Location"] = validationResult.redirectUrl            
             
         else:
