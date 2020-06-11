@@ -257,6 +257,7 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
         state = testObject.getState(eventId, 10, secretKey, True)
         assert (state.isStateExtendable())
         assert (state.isValid)
+        assert(state.isFound)
         assert (state.queueId == queueId)
         assert (state.redirectType == "queue")
 
@@ -277,6 +278,7 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
             hashValue, QueueitHelpers.getCookieExpirationDate(), cookieDomain)
         state = testObject.getState(eventId, 10, secretKey, True)
         assert (not state.isValid)
+        assert (state.isFound)
 
     def test_getState_oldCookie_invalid_expiredCookie_nonExtendable(self):
         eventId = "event1"
@@ -296,6 +298,7 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
             QueueitHelpers.getCookieExpirationDate(), cookieDomain)
         state = testObject.getState(eventId, 10, secretKey, True)
         assert (not state.isValid)
+        assert (state.isFound)
 
     def test_getState_validCookieFormat_nonExtendable(self):
         eventId = "event1"
@@ -316,5 +319,16 @@ class TestUserInQueueStateCookieRepository(unittest.TestCase):
         state = testObject.getState(eventId, 10, secretKey, True)
         assert (not state.isStateExtendable())
         assert (state.isValid)
+        assert (state.isFound)
         assert (state.queueId == queueId)
         assert (state.redirectType == "idle")
+
+    def test_getState_NoCookie(self):
+        fakeContext = HttpContextProviderMock()
+        testObject = UserInQueueStateCookieRepository(fakeContext)
+        eventId = "event1"
+        secretKey = "4e1deweb821-a82ew5-49da-acdqq0-5d3476f2068db"
+
+        state = testObject.getState(eventId, 10, secretKey, True)
+        assert (not state.isFound)
+        assert (not state.isValid)

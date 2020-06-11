@@ -108,26 +108,29 @@ class UserInQueueStateCookieRepository:
 
     def getState(self, eventId, cookieValidityMinutes, secretKey,
                  validateTime):
-        cookieKey = UserInQueueStateCookieRepository.getCookieKey(eventId)
+        try:
+            cookieKey = UserInQueueStateCookieRepository.getCookieKey(eventId)
 
-        if (self.httpContextProvider.getCookie(cookieKey) is None):
-            return StateInfo(False, None, None, None)
+            if (self.httpContextProvider.getCookie(cookieKey) is None):
+                return StateInfo(False, False, None, None, None)
 
-        cookieNameValueMap = UserInQueueStateCookieRepository.__getCookieNameValueMap(
-            self.httpContextProvider.getCookie(cookieKey))
-        if (not UserInQueueStateCookieRepository.__isCookieValid(
-                secretKey, cookieNameValueMap, eventId, cookieValidityMinutes,
-                validateTime)):
-            return StateInfo(False, None, None, None)
+            cookieNameValueMap = UserInQueueStateCookieRepository.__getCookieNameValueMap(
+                self.httpContextProvider.getCookie(cookieKey))
+            if (not UserInQueueStateCookieRepository.__isCookieValid(
+                    secretKey, cookieNameValueMap, eventId, cookieValidityMinutes,
+                    validateTime)):
+                return StateInfo(True, False, None, None, None)
 
-        fixedCookieValidityMinutes = None
-        if ("FixedValidityMins" in cookieNameValueMap):
-            fixedCookieValidityMinutes = int(
-                cookieNameValueMap["FixedValidityMins"])
+            fixedCookieValidityMinutes = None
+            if ("FixedValidityMins" in cookieNameValueMap):
+                fixedCookieValidityMinutes = int(
+                    cookieNameValueMap["FixedValidityMins"])
 
-        return StateInfo(True, cookieNameValueMap["QueueId"],
-                         fixedCookieValidityMinutes,
-                         cookieNameValueMap["RedirectType"])
+            return StateInfo(True, True, cookieNameValueMap["QueueId"],
+                             fixedCookieValidityMinutes,
+                             cookieNameValueMap["RedirectType"])
+        except:
+            return StateInfo(True, False, None, None, None)
 
     def cancelQueueCookie(self, eventId, cookieDomain):
         cookieKey = UserInQueueStateCookieRepository.getCookieKey(eventId)
@@ -163,8 +166,9 @@ class UserInQueueStateCookieRepository:
 
 
 class StateInfo:
-    def __init__(self, isValid, queueId, fixedCookieValidityMinutes,
+    def __init__(self, isFound, isValid, queueId, fixedCookieValidityMinutes,
                  redirectType):
+        self.isFound = isFound
         self.isValid = isValid
         self.queueId = queueId
         self.fixedCookieValidityMinutes = fixedCookieValidityMinutes
