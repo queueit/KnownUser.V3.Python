@@ -47,172 +47,12 @@ If the timestamp or hash is invalid, the user is send back to the queue.
 
 
 ## Implementation
-The KnownUser validation must be done on *all requests except requests for static resources like images, css files and ...*. 
+The KnownUser validation must be done on *all requests except requests for static and cached pages, resources like images, css files and ...*. 
 So, if you add the KnownUser validation logic to a central place, then be sure that the Triggers only fire on page requests (including ajax requests) and not on e.g. image.
 
 If we have the `integrationconfig.json` copied  in the folder beside other knownuser files inside web application folder then 
 the following method (using Django v.1.8) is all that is needed to validate that a user has been through the queue:
  
-```python
-from django.http import HttpResponse
-
-import django
-import sys
-import re
-
-from queueit_knownuserv3.http_context_providers import Django_1_8_Provider
-from queueit_knownuserv3.models import QueueEventConfig
-from queueit_knownuserv3.known_user import KnownUser
-
-
-def index(request):
-    try:
-        with open('integrationconfiguration.json', 'r') as myfile:
-            integrationsConfigString = myfile.read()
-
-        customerId = "" # Your Queue-it customer ID
-        secretKey = "" # Your 72 char secret key as specified in Go Queue-it self-service platform
-
-        response = HttpResponse()
-        httpContextProvider = Django_1_8_Provider(request, response)
-        requestUrl = httpContextProvider.getOriginalRequestUrl()
-        requestUrlWithoutToken = re.sub(
-            "([\\?&])(" + KnownUser.QUEUEIT_TOKEN_KEY + "=[^&]*)",
-            '',
-            requestUrl,
-            flags=re.IGNORECASE)
-        # The requestUrlWithoutToken is used to match Triggers and as the Target url (where to return the users to).
-        # It is therefor important that this is exactly the url of the users browsers. So, if your webserver is
-        # behind e.g. a load balancer that modifies the host name or port, reformat requestUrlWithoutToken before proceeding.
-
-        queueitToken = request.GET.get(KnownUser.QUEUEIT_TOKEN_KEY)
-
-        validationResult = KnownUser.validateRequestByIntegrationConfig(
-            requestUrlWithoutToken, queueitToken, integrationsConfigString,
-            customerId, secretKey, httpContextProvider)
-
-        if (validationResult.doRedirect()):
-            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            response["Pragma"] = "no-cache"
-	    response["Expires"] = "Fri, 01 Jan 1990 00:00:00 GMT"
-	    
-	    response.status_code = 302
-            response["Location"] = validationResult.redirectUrl            
-            
-        else:
-            # Request can continue, we remove queueittoken from url to avoid sharing of user specific token
-            if (requestUrl != requestUrlWithoutToken
-                    and not(validationResult.actionType == None)):
-                response.status_code = 302
-                response["Location"] = requestUrlWithoutToken
-            
-	return response
-
-    except StandardError as stdErr:
-        # There was an error validating the request
-        # Use your own logging framework to log the error
-        # This was a configuration error, so we let the user continue
-        print stdErr.message        
-```
-
-## Alternative Implementation
-
-### Queue configuration
-
-If your application server (maybe due to security reasons) is not allowed to do external GET requests, then you have three options:
-
-1. Manually download the configuration file from Queue-it Go self-service portal, save it on your application server and load it from local disk
-2. Use an internal gateway server to download the configuration file and save to application server
-3. Specify the configuration in code without using the Trigger/Action paradigm. In this case it is important *only to queue-up page requests* and not requests for resources or AJAX calls. 
-This can be done by adding custom filtering logic before caling the `KnownUser.resolveQueueRequestByLocalConfig()` method. 
-
-The following is an example (using Django v.1.8) of how to specify the configuration in code:
-
-```python
-from django.http import HttpResponse
-
-import django
-import sys
-import re
-
-from queueit_knownuserv3.http_context_providers import Django_1_8_Provider
-from queueit_knownuserv3.models import QueueEventConfig
-from queueit_knownuserv3.known_user import KnownUser
-
-
-def index(request):
-    try:
-        
-        customerId = "" # Your Queue-it customer ID
-        secretKey = "" # Your 72 char secret key as specified in Go Queue-it self-service platform
-
-	queueConfig = QueueEventConfig()
-	queueConfig.eventId = "" # ID of the queue to use
-	queueConfig.queueDomain = "xxx.queue-it.net" #Domain name of the queue - usually in the format [CustomerId].queue-it.net
-	# queueConfig.cookieDomain = ".my-shop.com" #Optional - Domain name where the Queue-it session cookie should be saved
-	queueConfig.cookieValidityMinute = 15 #Optional - Validity of the Queue-it session cookie. Default is 10 minutes
-	queueConfig.extendCookieValidity = true #Optional - Should the Queue-it session cookie validity time be extended each time the validation runs? Default is true.
-	# queueConfig.culture = "da-DK" #Optional - Culture of the queue ticket layout in the format specified here: https://msdn.microsoft.com/en-us/library/ee825488(v=cs.20).aspx Default is to use what is specified on Event
-	# queueConfig.layoutName = "NameOfYourCustomLayout" #Optional - Name of the queue ticket layout - e.g. "Default layout by Queue-it". Default is to take what is specified on the Event
-
-	response = HttpResponse()
-        httpContextProvider = Django_1_8_Provider(request, response)
-        requestUrl = httpContextProvider.getOriginalRequestUrl()
-        requestUrlWithoutToken = re.sub(
-            "([\\?&])(" + KnownUser.QUEUEIT_TOKEN_KEY + "=[^&]*)",
-            '',
-            requestUrl,
-            flags=re.IGNORECASE)
-        # The requestUrlWithoutToken is used to match Triggers and as the Target url (where to return the users to).
-        # It is therefor important that this is exactly the url of the users browsers. So, if your webserver is
-        # behind e.g. a load balancer that modifies the host name or port, reformat requestUrlWithoutToken before proceeding.
-
-        queueitToken = request.GET.get(KnownUser.QUEUEIT_TOKEN_KEY)
-
-	validationResult = KnownUser.resolveQueueRequestByLocalConfig(
-            requestUrlWithoutToken, queueitToken, queueConfig, customerId, secretKey,
-            httpContextProvider)
-
-        if (validationResult.doRedirect()):
-            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-            response["Pragma"] = "no-cache"
-	    response["Expires"] = "Fri, 01 Jan 1990 00:00:00 GMT"
-	    
-	    response.status_code = 302
-            response["Location"] = validationResult.redirectUrl            
-            
-        else:
-            # Request can continue, we remove queueittoken from url to avoid sharing of user specific token
-            if (requestUrl != requestUrlWithoutToken
-                    and not(validationResult.actionType == None)):
-                response.status_code = 302
-                response["Location"] = requestUrlWithoutToken
-            
-	return response
-
-    except StandardError as stdErr:
-        # There was an error validating the request
-        # Use your own logging framework to log the error
-        # This was a configuration error, so we let the user continue
-        print stdErr.message        
-```
-### Protecting ajax calls on static pages
-If you have some static html pages (might be behind cache servers) and you have some ajax calls from those pages needed to be protected by KnownUser library you need to follow these steps:
-1) You are using v.3.5.1 (or later) of the KnownUser library.
-2) Make sure KnownUser code will not run on static pages (by ignoring those URLs in your integration configuration).
-3) Add below JavaScript tags to static pages :
-```
-<script type="text/javascript" src="//static.queue-it.net/script/queueclient.min.js"></script>
-<script
- data-queueit-intercept-domain="{YOUR_CURRENT_DOMAIN}"
-   data-queueit-intercept="true"
-  data-queueit-c="{YOUR_CUSTOMER_ID}"
-  type="text/javascript"
-  src="//static.queue-it.net/script/queueconfigloader.min.js">
-</script>
-```
-4) Use the following method (using Django v.1.8) to protect all dynamic calls (including dynamic pages and ajax calls).
-
 ```python
 from django.http import HttpResponse
 
@@ -270,6 +110,103 @@ def index(request):
                 response["Location"] = requestUrlWithoutToken                
             
         return response
+
+    except StandardError as stdErr:
+        # There was an error validating the request
+        # Use your own logging framework to log the error
+        # This was a configuration error, so we let the user continue
+        print stdErr.message        
+```
+### Protecting ajax calls
+If you need to protect AJAX calls beside page loads you need to add the below JavaScript tags to your pages:
+
+```
+<script type="text/javascript" src="//static.queue-it.net/script/queueclient.min.js"></script>
+<script
+ data-queueit-intercept-domain="{YOUR_CURRENT_DOMAIN}"
+   data-queueit-intercept="true"
+  data-queueit-c="{YOUR_CUSTOMER_ID}"
+  type="text/javascript"
+  src="//static.queue-it.net/script/queueconfigloader.min.js">
+</script>
+```
+
+## Alternative Implementation
+
+### Queue configuration
+
+If your application server (maybe due to security reasons) is not allowed to do external GET requests, then you have three options:
+
+1. Manually download the configuration file from Queue-it Go self-service portal, save it on your application server and load it from local disk
+2. Use an internal gateway server to download the configuration file and save to application server
+3. Specify the configuration in code without using the Trigger/Action paradigm. In this case it is important *only to queue-up page requests* and not requests for resources or AJAX calls. 
+This can be done by adding custom filtering logic before caling the `KnownUser.resolveQueueRequestByLocalConfig()` method. 
+
+The following is an example (using Django v.1.8) of how to specify the configuration in code:
+
+```python
+from django.http import HttpResponse
+
+import django
+import sys
+import re
+
+from queueit_knownuserv3.http_context_providers import Django_1_8_Provider
+from queueit_knownuserv3.models import QueueEventConfig
+from queueit_knownuserv3.known_user import KnownUser
+
+
+def index(request):
+    try:
+        
+        customerId = "" # Your Queue-it customer ID
+        secretKey = "" # Your 72 char secret key as specified in Go Queue-it self-service platform
+
+	queueConfig = QueueEventConfig()
+	queueConfig.eventId = "" # ID of the queue to use
+	queueConfig.queueDomain = "xxx.queue-it.net" #Domain name of the queue.
+	# queueConfig.cookieDomain = ".my-shop.com" #Optional - Domain name where the Queue-it session cookie should be saved
+	queueConfig.cookieValidityMinute = 15 #Validity of the Queue-it session cookie should be positive number.
+	queueConfig.extendCookieValidity = true #Should the Queue-it session cookie validity time be extended each time the validation runs?
+	# queueConfig.culture = "da-DK" #Optional - Culture of the queue layout in the format specified here: https://msdn.microsoft.com/en-us/library/ee825488(v=cs.20).aspx.  If unspecified then settings from Event will be used.
+	# queueConfig.layoutName = "NameOfYourCustomLayout" #Optional - Name of the queue layout. If unspecified then settings from Event will be used.
+	response = HttpResponse()
+        httpContextProvider = Django_1_8_Provider(request, response)
+        requestUrl = httpContextProvider.getOriginalRequestUrl()
+        requestUrlWithoutToken = re.sub(
+            "([\\?&])(" + KnownUser.QUEUEIT_TOKEN_KEY + "=[^&]*)",
+            '',
+            requestUrl,
+            flags=re.IGNORECASE)
+        # The requestUrlWithoutToken is used to match Triggers and as the Target url (where to return the users to).
+        # It is therefor important that this is exactly the url of the users browsers. So, if your webserver is
+        # behind e.g. a load balancer that modifies the host name or port, reformat requestUrlWithoutToken before proceeding.
+
+        queueitToken = request.GET.get(KnownUser.QUEUEIT_TOKEN_KEY)
+
+	validationResult = KnownUser.resolveQueueRequestByLocalConfig(
+            requestUrlWithoutToken, queueitToken, queueConfig, customerId, secretKey,
+            httpContextProvider)
+
+        if (validationResult.doRedirect()):
+            response["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response["Pragma"] = "no-cache"
+	    response["Expires"] = "Fri, 01 Jan 1990 00:00:00 GMT"
+	    
+	     if (not validationResult.isAjaxResult):
+                response.status_code = 302
+                response["Location"] = validationResult.redirectUrl                                
+            else:
+                headerKey = validationResult.getAjaxQueueRedirectHeaderKey()
+                response[headerKey] = validationResult.getAjaxRedirectUrl()     
+        else:
+            # Request can continue, we remove queueittoken from url to avoid sharing of user specific token
+            if (requestUrl != requestUrlWithoutToken
+                    and not(validationResult.actionType == None)):
+                response.status_code = 302
+                response["Location"] = requestUrlWithoutToken
+            
+	return response
 
     except StandardError as stdErr:
         # There was an error validating the request
