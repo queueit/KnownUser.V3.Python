@@ -104,8 +104,7 @@ def index(request):
                 response[headerKey] = validationResult.getAjaxRedirectUrl()                
         else:
             # Request can continue, we remove queueittoken from url to avoid sharing of user specific token
-            if (requestUrl != requestUrlWithoutToken
-                    and not(validationResult.actionType == None)):
+            if (requestUrl != requestUrlWithoutToken and validationResult.actionType == "Queue"):
                 response.status_code = 302
                 response["Location"] = requestUrlWithoutToken                
             
@@ -201,8 +200,7 @@ def index(request):
                 response[headerKey] = validationResult.getAjaxRedirectUrl()     
         else:
             # Request can continue, we remove queueittoken from url to avoid sharing of user specific token
-            if (requestUrl != requestUrlWithoutToken
-                    and not(validationResult.actionType == None)):
+            if (requestUrl != requestUrlWithoutToken and validationResult.actionType == "Queue"):
                 response.status_code = 302
                 response["Location"] = requestUrlWithoutToken
             
