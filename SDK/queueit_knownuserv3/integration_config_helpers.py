@@ -1,4 +1,4 @@
-from queueit_helpers import QueueitHelpers
+from .queueit_helpers import QueueitHelpers
 
 
 class IntegrationEvaluator:
