@@ -1,6 +1,6 @@
-from queue_url_params import QueueUrlParams
-from models import RequestValidationResult, Utils
-from queueit_helpers import QueueitHelpers
+from .queue_url_params import QueueUrlParams
+from .models import RequestValidationResult, Utils
+from .queueit_helpers import QueueitHelpers
 
 class ConnectorDiagnostics:
     def __init__(self):
