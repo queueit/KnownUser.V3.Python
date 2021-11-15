@@ -1,4 +1,4 @@
-from models import Utils as Utils
+from .models import Utils as Utils
 
 
 class QueueUrlParams:
