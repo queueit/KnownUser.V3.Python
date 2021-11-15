@@ -1,5 +1,5 @@
-from queueit_helpers import QueueitHelpers
-from models import Utils
+from .queueit_helpers import QueueitHelpers
+from .models import Utils
 
 
 class UserInQueueStateCookieRepository:
