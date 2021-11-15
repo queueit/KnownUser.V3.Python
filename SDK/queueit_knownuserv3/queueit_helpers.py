@@ -2,7 +2,7 @@ import hmac
 import hashlib
 import urllib
 import time
-import urlparse
+from urllib.parse import urlparse
 from datetime import datetime, timedelta
 
 
@@ -26,7 +26,7 @@ class QueueitHelpers:
 
     @staticmethod
     def urlParse(url_string):
-        return urlparse.urlparse(url_string)
+        return urlparse(url_string)
 
     @staticmethod
     def getCookieExpirationDate():
