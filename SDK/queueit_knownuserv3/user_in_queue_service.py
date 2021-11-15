@@ -1,7 +1,7 @@
-from models import RequestValidationResult, ActionTypes, Utils
-from queue_url_params import QueueUrlParams
-from user_in_queue_state_cookie_repository import UserInQueueStateCookieRepository
-from queueit_helpers import QueueitHelpers
+from .models import RequestValidationResult, ActionTypes, Utils
+from .queue_url_params import QueueUrlParams
+from .user_in_queue_state_cookie_repository import UserInQueueStateCookieRepository
+from .queueit_helpers import QueueitHelpers
 
 
 class UserInQueueService:
