@@ -1,104 +1,122 @@
 from queueit_helpers import QueueitHelpers
 
 
+class ValidatorType:
+    def __init__(self):
+        pass
+
+    UrlValidator = 'UrlValidator'
+    CookieValidator = 'CookieValidator'
+    UserAgentValidator = 'UserAgentValidator'
+    HttpHeaderValidator = 'HttpHeaderValidator'
+    RequestBodyValidator = 'RequestBodyValidator'
+
+
 class IntegrationEvaluator:
-    def getMatchedIntegrationConfig(self, customerIntegration, currentPageUrl,
-                                    httpContextProvider):
-        if (not isinstance(customerIntegration, dict)
-                or customerIntegration.get("Integrations") == None
-                or not isinstance(customerIntegration["Integrations"], list)):
+    def getMatchedIntegrationConfig(self, customer_integration, current_page_url,
+                                    http_context_provider):
+        if (not isinstance(customer_integration, dict)
+                or "Integrations" not in customer_integration
+                or customer_integration.get("Integrations") is None
+                or not isinstance(customer_integration["Integrations"], list)):
             return None
 
-        for integrationConfig in customerIntegration["Integrations"]:
+        for integrationConfig in customer_integration["Integrations"]:
             if (not isinstance(integrationConfig, dict)
-                    or integrationConfig.get("Triggers") == None or
+                    or "Triggers" not in integrationConfig
+                    or integrationConfig.get("Triggers") is None or
                     not isinstance(integrationConfig.get("Triggers"), list)):
                 continue
 
             for trigger in integrationConfig["Triggers"]:
-                if (not isinstance(trigger, dict)):
+                if not isinstance(trigger, dict):
                     return False
-                if (self.evaluateTrigger(trigger, currentPageUrl,
-                                         httpContextProvider)):
+                if (self.evaluateTrigger(trigger, current_page_url,
+                                         http_context_provider)):
                     return integrationConfig
 
         return None
 
-    def evaluateTrigger(self, trigger, currentPageUrl, httpContextProvider):
-        if (trigger.get("LogicalOperator") == None
-                or trigger.get("TriggerParts") == None
+    def evaluateTrigger(self, trigger, current_page_url, http_context_provider):
+        if (trigger.get("LogicalOperator") is None
+                or "TriggerParts" not in trigger
+                or trigger.get("TriggerParts") is None
                 or not isinstance(trigger.get("TriggerParts"), list)):
             return False
 
-        if (trigger.get("LogicalOperator") == "Or"):
+        if trigger.get("LogicalOperator") == "Or":
             for triggerPart in trigger["TriggerParts"]:
-                if (not isinstance(triggerPart, dict)):
+                if not isinstance(triggerPart, dict):
                     return False
-                if (self.evaluateTriggerPart(triggerPart, currentPageUrl,
-                                             httpContextProvider)):
+                if (self.evaluateTriggerPart(triggerPart, current_page_url,
+                                             http_context_provider)):
                     return True
             return False
         else:
             for triggerPart in trigger["TriggerParts"]:
-                if (not isinstance(triggerPart, dict)):
+                if not isinstance(triggerPart, dict):
                     return False
-                if (not self.evaluateTriggerPart(triggerPart, currentPageUrl,
-                                                 httpContextProvider)):
+                if (not self.evaluateTriggerPart(triggerPart, current_page_url,
+                                                 http_context_provider)):
                     return False
             return True
 
-    def evaluateTriggerPart(self, triggerPart, currentPageUrl,
-                            httpContextProvider):
-        validatorType = triggerPart.get("ValidatorType")
-        if (validatorType == None):
+    def evaluateTriggerPart(self, trigger_part, current_page_url,
+                            http_context_provider):
+        validator_type = trigger_part.get("ValidatorType")
+        if validator_type is None:
             return False
 
-        if (validatorType == "UrlValidator"):
-            return UrlValidatorHelper.evaluate(triggerPart, currentPageUrl)
-        if (validatorType == "CookieValidator"):
-            return CookieValidatorHelper.evaluate(triggerPart,
-                                                  httpContextProvider)
-        if (validatorType == "UserAgentValidator"):
-            return UserAgentValidatorHelper.evaluate(triggerPart,
-                                                     httpContextProvider)
-        if (validatorType == "HttpHeaderValidator"):
-            return HttpHeaderValidatorHelper.evaluate(triggerPart,
-                                                      httpContextProvider)
+        if validator_type == ValidatorType.UrlValidator:
+            return UrlValidatorHelper.evaluate(trigger_part, current_page_url)
+        elif validator_type == ValidatorType.CookieValidator:
+            return CookieValidatorHelper.evaluate(trigger_part,
+                                                  http_context_provider)
+        elif validator_type == ValidatorType.UserAgentValidator:
+            return UserAgentValidatorHelper.evaluate(trigger_part,
+                                                     http_context_provider)
+        elif validator_type == ValidatorType.HttpHeaderValidator:
+            return HttpHeaderValidatorHelper.evaluate(trigger_part,
+                                                      http_context_provider)
+        elif validator_type == ValidatorType.RequestBodyValidator:
+            return RequestBodyValidatorHelper.evaluate(trigger_part,
+                                                       http_context_provider)
 
         return False
 
 
 class UrlValidatorHelper:
     @staticmethod
-    def evaluate(triggerPart, url):
+    def evaluate(trigger_part, url):
         try:
-            if (triggerPart == None or "Operator" not in triggerPart
-                    or "IsNegative" not in triggerPart
-                    or "IsIgnoreCase" not in triggerPart
-                    or "UrlPart" not in triggerPart):
+            if (trigger_part is None
+                    or "Operator" not in trigger_part
+                    or "IsNegative" not in trigger_part
+                    or "IsIgnoreCase" not in trigger_part
+                    or "UrlPart" not in trigger_part):
                 return False
 
-            urlPart = UrlValidatorHelper.getUrlPart(triggerPart['UrlPart'],
+            urlPart = UrlValidatorHelper.getUrlPart(trigger_part['UrlPart'],
                                                     url)
 
             return ComparisonOperatorHelper.evaluate(
-                triggerPart["Operator"], triggerPart["IsNegative"],
-                triggerPart["IsIgnoreCase"], urlPart,
-                triggerPart.get("ValueToCompare"),
-                triggerPart.get("ValuesToCompare"))
+                trigger_part["Operator"], trigger_part["IsNegative"],
+                trigger_part["IsIgnoreCase"], urlPart,
+                trigger_part.get("ValueToCompare"),
+                trigger_part.get("ValuesToCompare"))
         except:
             return False
 
     @staticmethod
-    def getUrlPart(urlPart, url):
+    def getUrlPart(url_part, url):
         try:
             uri = QueueitHelpers.urlParse(url)
 
-            if (urlPart == "PagePath"):
+            if url_part == "PagePath":
                 return uri.path
-            if (urlPart == "PageUrl"):
+            elif url_part == "PageUrl":
                 return url
-            if (urlPart == "HostName"):
+            elif url_part == "HostName":
                 return uri.hostname
             return ''
         except:
@@ -107,135 +125,160 @@ class UrlValidatorHelper:
 
 class CookieValidatorHelper:
     @staticmethod
-    def evaluate(triggerPart, httpContextProvider):
+    def evaluate(trigger_part, http_context_provider):
         try:
-            if (triggerPart == None or "Operator" not in triggerPart
-                    or "IsNegative" not in triggerPart
-                    or "IsIgnoreCase" not in triggerPart
-                    or "CookieName" not in triggerPart):
+            if (trigger_part is None
+                    or "Operator" not in trigger_part
+                    or "IsNegative" not in trigger_part
+                    or "IsIgnoreCase" not in trigger_part
+                    or "CookieName" not in trigger_part):
                 return False
 
-            cookieValue = httpContextProvider.getCookie(
-                triggerPart['CookieName'])
+            cookie_value = http_context_provider.getCookie(
+                trigger_part['CookieName'])
 
             return ComparisonOperatorHelper.evaluate(
-                triggerPart["Operator"], triggerPart["IsNegative"],
-                triggerPart["IsIgnoreCase"], cookieValue,
-                triggerPart.get("ValueToCompare"),
-                triggerPart.get("ValuesToCompare"))
+                trigger_part["Operator"], trigger_part["IsNegative"],
+                trigger_part["IsIgnoreCase"], cookie_value,
+                trigger_part.get("ValueToCompare"),
+                trigger_part.get("ValuesToCompare"))
         except:
             return False
 
 
 class UserAgentValidatorHelper:
     @staticmethod
-    def evaluate(triggerPart, httpContextProvider):
+    def evaluate(trigger_part, http_context_provider):
         try:
-            if (triggerPart == None or "Operator" not in triggerPart
-                    or "IsNegative" not in triggerPart
-                    or "IsIgnoreCase" not in triggerPart):
+            if (trigger_part is None or "Operator" not in trigger_part
+                    or "IsNegative" not in trigger_part
+                    or "IsIgnoreCase" not in trigger_part):
                 return False
 
-            userAgent = httpContextProvider.getHeader("user-agent")
+            user_agent = http_context_provider.getHeader("user-agent")
 
             return ComparisonOperatorHelper.evaluate(
-                triggerPart["Operator"], triggerPart["IsNegative"],
-                triggerPart["IsIgnoreCase"], userAgent,
-                triggerPart.get("ValueToCompare"),
-                triggerPart.get("ValuesToCompare"))
+                trigger_part["Operator"], trigger_part["IsNegative"],
+                trigger_part["IsIgnoreCase"], user_agent,
+                trigger_part.get("ValueToCompare"),
+                trigger_part.get("ValuesToCompare"))
+        except:
+            return False
+
+
+class RequestBodyValidatorHelper:
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def evaluate(trigger_part, http_context_provider):
+        try:
+            if (trigger_part is None
+                    or "Operator" not in trigger_part
+                    or "IsNegative" not in trigger_part
+                    or "IsIgnoreCase" not in trigger_part):
+                return False
+
+            request_body = http_context_provider.getRequestBodyAsString()
+            return ComparisonOperatorHelper.evaluate(
+                trigger_part["Operator"], trigger_part["IsNegative"],
+                trigger_part["IsIgnoreCase"], request_body,
+                trigger_part.get("ValueToCompare"),
+                trigger_part.get("ValuesToCompare"))
         except:
             return False
 
 
 class HttpHeaderValidatorHelper:
     @staticmethod
-    def evaluate(triggerPart, httpContextProvider):
+    def evaluate(trigger_part, http_context_provider):
         try:
-            if (triggerPart == None or "Operator" not in triggerPart
-                    or "IsNegative" not in triggerPart
-                    or "IsIgnoreCase" not in triggerPart
-                    or "HttpHeaderName" not in triggerPart):
+            if (trigger_part is None
+                    or "Operator" not in trigger_part
+                    or "IsNegative" not in trigger_part
+                    or "IsIgnoreCase" not in trigger_part
+                    or "HttpHeaderName" not in trigger_part):
                 return False
 
-            headerValue = httpContextProvider.getHeader(
-                triggerPart['HttpHeaderName'])
+            header_value = http_context_provider.getHeader(
+                trigger_part['HttpHeaderName'])
 
             return ComparisonOperatorHelper.evaluate(
-                triggerPart["Operator"], triggerPart["IsNegative"],
-                triggerPart["IsIgnoreCase"], headerValue,
-                triggerPart.get("ValueToCompare"),
-                triggerPart.get("ValuesToCompare"))
+                trigger_part["Operator"], trigger_part["IsNegative"],
+                trigger_part["IsIgnoreCase"], header_value,
+                trigger_part.get("ValueToCompare"),
+                trigger_part.get("ValuesToCompare"))
         except:
             return False
 
 
 class ComparisonOperatorHelper:
     @staticmethod
-    def evaluate(opt, isNegative, ignoreCase, value, valueToCompare,
-                 valuesToCompare):
-        if (value is None):
+    def evaluate(opt, is_negative, ignore_case, value, value_to_compare,
+                 values_to_compare):
+        if value is None:
             value = ''
 
-        if (valueToCompare is None):
-            valueToCompare = ''
+        if value_to_compare is None:
+            value_to_compare = ''
 
-        if (valuesToCompare is None):
-            valuesToCompare = []
+        if values_to_compare is None:
+            values_to_compare = []
 
-        if (opt == "Equals"):
-            return ComparisonOperatorHelper.equals(value, valueToCompare,
-                                                   isNegative, ignoreCase)
-        if (opt == "Contains"):
-            return ComparisonOperatorHelper.contains(value, valueToCompare,
-                                                     isNegative, ignoreCase)
-        if (opt == "EqualsAny"):
-            return ComparisonOperatorHelper.equalsAny(value, valuesToCompare,
-                                                      isNegative, ignoreCase)
-        if (opt == "ContainsAny"):
+        if opt == "Equals":
+            return ComparisonOperatorHelper.equals(value, value_to_compare,
+                                                   is_negative, ignore_case)
+        if opt == "Contains":
+            return ComparisonOperatorHelper.contains(value, value_to_compare,
+                                                     is_negative, ignore_case)
+        if opt == "EqualsAny":
+            return ComparisonOperatorHelper.equalsAny(value, values_to_compare,
+                                                      is_negative, ignore_case)
+        if opt == "ContainsAny":
             return ComparisonOperatorHelper.containsAny(
-                value, valuesToCompare, isNegative, ignoreCase)
+                value, values_to_compare, is_negative, ignore_case)
 
         return False
 
     @staticmethod
-    def equals(value, valueToCompare, isNegative, ignoreCase):
-        if (ignoreCase):
-            evaluation = value.upper() == valueToCompare.upper()
+    def equals(value, value_to_compare, is_negative, ignore_case):
+        if ignore_case:
+            evaluation = value.upper() == value_to_compare.upper()
         else:
-            evaluation = value == valueToCompare
+            evaluation = value == value_to_compare
 
-        if (isNegative):
+        if is_negative:
             return not evaluation
         else:
             return evaluation
 
     @staticmethod
-    def contains(value, valueToCompare, isNegative, ignoreCase):
-        if (valueToCompare == "*" and value != ''):
+    def contains(value, value_to_compare, is_negative, ignore_case):
+        if value_to_compare == "*" and value != '':
             return True
 
-        if (ignoreCase):
+        if ignore_case:
             value = value.upper()
-            valueToCompare = valueToCompare.upper()
+            value_to_compare = value_to_compare.upper()
 
-        evaluation = valueToCompare in value
-        if (isNegative):
+        evaluation = value_to_compare in value
+        if is_negative:
             return not evaluation
         else:
             return evaluation
 
     @staticmethod
-    def equalsAny(value, valuesToCompare, isNegative, ignoreCase):
-        for valueToCompare in valuesToCompare:
+    def equalsAny(value, values_to_compare, is_negative, ignore_case):
+        for valueToCompare in values_to_compare:
             if (ComparisonOperatorHelper.equals(value, valueToCompare, False,
-                                                ignoreCase)):
-                return not isNegative
-        return isNegative
+                                                ignore_case)):
+                return not is_negative
+        return is_negative
 
     @staticmethod
-    def containsAny(value, valuesToCompare, isNegative, ignoreCase):
-        for valueToCompare in valuesToCompare:
+    def containsAny(value, values_to_compare, is_negative, ignore_case):
+        for valueToCompare in values_to_compare:
             if (ComparisonOperatorHelper.contains(value, valueToCompare, False,
-                                                  ignoreCase)):
-                return not isNegative
-        return isNegative
+                                                  ignore_case)):
+                return not is_negative
+        return is_negative

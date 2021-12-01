@@ -149,5 +149,35 @@ def index(request):
         # There was an error validating the request
         # Use your own logging framework to log the error
         # This was a configuration error, so we let the user continue
-        print stdErr.message        
+        print stdErr.message
+```
+
+## Request body trigger (advanced)
+
+The connector supports triggering on request body content. An example could be a POST call with specific item ID where you want end-users to queue up for.
+For this to work, you will need to contact Queue-it support or enable request body triggers in your integration settings in your GO Queue-it platform account.
+Once enabled you will need to update your integration so request body is available for the connector.  
+You need to create a new context provider similar to this one:
+
+```python
+from queueit_knownuserv3.http_context_providers import Django_1_8_Provider
+
+
+class Django_1_8_Provider_WithBody(Django_1_8_Provider):
+    def __init__(self, request, response):
+        super(Django_1_8_Provider_WithBody, self).__init__(request, response)
+
+    def getRequestBodyAsString(self):
+        return self.request.body
+
+```
+
+And then use it instead of `Django_1_8_Provider`
+
+```python
+# The default Django_1_8_Provider class always returns empty string as request body.
+# So we use Django_1_8_Provider_WithBody in order to read the body.
+# If you don't need to read the request body you may use Django_1_8_Provider
+# http_context_provider = Django_1_8_Provider(request, response)
+http_context_provider = Django_1_8_Provider_WithBody(request, response)
 ```

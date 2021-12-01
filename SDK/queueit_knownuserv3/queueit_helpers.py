@@ -33,7 +33,7 @@ class QueueitHelpers:
         return datetime.utcnow() + timedelta(days=1)
 
     @staticmethod
-    def getCurrentTimeAsIso8601Str():        
+    def getCurrentTimeAsIso8601Str():
         return datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
 
     @staticmethod

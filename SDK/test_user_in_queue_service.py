@@ -21,8 +21,8 @@ class HttpContextProviderMock(HttpContextProvider):
 
 
 class UserInQueueStateCookieRepositoryMock(UserInQueueStateCookieRepository):
-    def __init__(self, httpContextProvider):
-        self.httpContextProvider = httpContextProvider
+    def __init__(self, http_context_provider):
+        self.httpContextProvider = http_context_provider
         self.arrayFunctionCallsArgs = {
             'store': [],
             'getState': [],
@@ -37,44 +37,44 @@ class UserInQueueStateCookieRepositoryMock(UserInQueueStateCookieRepository):
             'extendQueueCookie': []
         }
 
-    def getState(self, eventId, cookieValidityMinutes, secretKey,
-                 validateTime):
+    def getState(self, event_id, cookie_validity_minutes, secret_key,
+                 validate_time):
         self.arrayFunctionCallsArgs['getState'].append(
-            [eventId, cookieValidityMinutes, secretKey, validateTime])
+            [event_id, cookie_validity_minutes, secret_key, validate_time])
 
         return self.arrayReturns['getState'][
             len(self.arrayFunctionCallsArgs['getState']) - 1]
 
-    def store(self, eventId, queueId, fixedCookieValidityMinutes, cookieDomain,
-              redirectType, secretKey):
+    def store(self, eventId, queue_id, fixed_cookie_validity_minutes, cookie_domain,
+              isCookieHttpOnly, is_cookie_secure, redirect_type, secretKey):
         self.arrayFunctionCallsArgs['store'].append([
-            eventId, queueId, fixedCookieValidityMinutes, cookieDomain,
-            redirectType, secretKey
+            eventId, queue_id, fixed_cookie_validity_minutes, cookie_domain,
+            isCookieHttpOnly, is_cookie_secure, redirect_type, secretKey
         ])
 
-    def cancelQueueCookie(self, eventId, cookieDomain):
+    def cancelQueueCookie(self, event_id, cookie_domain, is_cookie_http_only, is_cookie_secure):
         self.arrayFunctionCallsArgs['cancelQueueCookie'].append(
-            [eventId, cookieDomain])
+            [event_id, cookie_domain, is_cookie_http_only, is_cookie_secure])
 
-    def reissueQueueCookie(self, eventId, cookieValidityMinutes, cookieDomain,
-                           secretKey):
+    def reissueQueueCookie(self, event_id, cookie_validity_minutes, cookie_domain,
+                           secret_key):
         self.arrayFunctionCallsArgs['store'].append(
-            [eventId, cookieValidityMinutes, cookieDomain, secretKey])
+            [event_id, cookie_validity_minutes, cookie_domain, secret_key])
 
     def expectCall(self, functionName, secquenceNo, argument):
-        if (len(self.arrayFunctionCallsArgs[functionName]) >= secquenceNo):
+        if len(self.arrayFunctionCallsArgs[functionName]) >= secquenceNo:
             argArr = self.arrayFunctionCallsArgs[functionName][secquenceNo - 1]
             if (len(argument) != len(argArr)):
                 return False
             c = range(len(argArr) - 1)
             for i in c:
-                if (argArr[i] != argument[i]):
+                if argArr[i] != argument[i]:
                     return False
             return True
         return False
 
     def expectCallAny(self, functionName):
-        if (len(self.arrayFunctionCallsArgs[functionName]) >= 1):
+        if len(self.arrayFunctionCallsArgs[functionName]) >= 1:
             return True
         return False
 
@@ -143,7 +143,7 @@ class TestUserInQueueService(unittest.TestCase):
         assert (result.queueId == "queueId")
         assert (userInQueueStateCookieRepositoryMock.expectCall(
             'store', 1,
-            ["e1", 'queueId', None, 'testDomain', "disabled", "key"]))
+            ["e1", 'queueId', None, 'testDomain', False, False, "disabled", "key"]))
         assert (queueConfig.actionName == result.actionName)
         assert (not userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
@@ -342,7 +342,7 @@ class TestUserInQueueService(unittest.TestCase):
         assert (result.queueId == 'queueId')
         assert (result.redirectType == 'queue')
         assert (userInQueueStateCookieRepositoryMock.expectCall(
-            'store', 1, ["e1", 'queueId', None, 'testDomain', 'queue', key]))
+            'store', 1, ["e1", 'queueId', None, 'testDomain', False, False, 'queue', key]))
         assert (queueConfig.actionName == result.actionName)
         assert (not userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
@@ -369,8 +369,7 @@ class TestUserInQueueService(unittest.TestCase):
             'false', 3, 'DirectLink', key)
         testObject = UserInQueueService(httpContextProviderMock,
                                         userInQueueStateCookieRepositoryMock)
-        result = testObject.validateQueueRequest(url, token, queueConfig,
-                                                 "testCustomer", key)
+        result = testObject.validateQueueRequest(url, token, queueConfig, "testCustomer", key)
         self.assertFalse(result.doRedirect())
         self.assertEqual(result.eventId, 'e1')
         self.assertEqual(result.queueId, 'queueId')
@@ -378,7 +377,7 @@ class TestUserInQueueService(unittest.TestCase):
         self.assertTrue(
             userInQueueStateCookieRepositoryMock.expectCall(
                 'store', 1,
-                ["e1", 'queueId', 3, 'testDomain', 'DirectLink', key]))
+                ["e1", 'queueId', 3, 'testDomain', False, False, 'DirectLink', key]))
         self.assertEquals(queueConfig.actionName, result.actionName)
         assert (not userInQueueStateCookieRepositoryMock.expectCallAny('cancelQueueCookie'))
 
@@ -568,15 +567,23 @@ class TestUserInQueueService(unittest.TestCase):
             httpContextProviderMock)
         userInQueueStateCookieRepositoryMock.arrayReturns['getState'].append(
             StateInfo(True, True, "queueId", 3, "idle"))
-        expectedUrl = "https://testDomain.com/cancel/testCustomer/e1/?c=testCustomer&e=e1&ver=" + UserInQueueService.SDK_VERSION + "&kupver=mock&cver=10&man=" + cancelConfig.actionName + "&r=" + QueueitHelpers.urlEncode(
-            url)
+
+        expectedUrl = ("https://testDomain.com/cancel/testCustomer/e1/queueId?" +
+            "c=testCustomer" +
+            "&e=e1" +
+            "&ver=" + UserInQueueService.SDK_VERSION +
+            "&kupver=mock" +
+            "&cver=10" +
+            "&man=" + cancelConfig.actionName +
+            "&r=" + QueueitHelpers.urlEncode(url))
+
         testObject = UserInQueueService(httpContextProviderMock,
                                         userInQueueStateCookieRepositoryMock)
         result = testObject.validateCancelRequest(url, cancelConfig,
                                                   "testCustomer", "key")
 
         assert (userInQueueStateCookieRepositoryMock.expectCall(
-            'cancelQueueCookie', 1, ["e1", 'my-cookie-domain']))
+            'cancelQueueCookie', 1, ["e1", 'my-cookie-domain', False, False]))
         assert (result.doRedirect())
         assert (result.queueId == "queueId")
         assert (result.eventId == 'e1')

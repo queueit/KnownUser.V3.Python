@@ -1,13 +1,13 @@
 from queueit_helpers import QueueitHelpers
 
 
-class HttpContextProvider:
+class HttpContextProvider(object):
     ERROR_MSG = "Please implement/use specific provider"
 
     def getProviderName(self):
         raise NotImplementedError(self.ERROR_MSG)
 
-    def setCookie(self, name, value, expire, domain):
+    def setCookie(self, name, value, expire, domain, is_http_only, is_secure):
         raise NotImplementedError(self.ERROR_MSG)
 
     def getCookie(self, name):
@@ -16,10 +16,13 @@ class HttpContextProvider:
     def getHeader(self, name):
         raise NotImplementedError(self.ERROR_MSG)
 
-    def getRequestIp(self, name):
+    def getRequestIp(self):
         raise NotImplementedError(self.ERROR_MSG)
 
     def getOriginalRequestUrl(self):
+        raise NotImplementedError(self.ERROR_MSG)
+
+    def getRequestBodyAsString(self):
         raise NotImplementedError(self.ERROR_MSG)
 
 
@@ -31,11 +34,11 @@ class Django_1_8_Provider(HttpContextProvider):
     def getProviderName(self):
         return "django_1_8"
 
-    def setCookie(self, name, value, expire, domain):
-        if (str(domain) == ""):
+    def setCookie(self, name, value, expire, domain, is_http_only, is_secure):
+        if str(domain) == "":
             domain = None
 
-        if (value is not None):
+        if value is not None:
             value = QueueitHelpers.urlEncode(value)
 
         self.response.set_cookie(
@@ -45,17 +48,17 @@ class Django_1_8_Provider(HttpContextProvider):
             expires=expire,
             path='/',
             domain=domain,
-            secure=None,
-            httponly=False)
+            secure=is_secure,
+            httponly=is_http_only)
 
     def getCookie(self, name):
         value = self.request.COOKIES.get(name)
-        if (value is not None):
+        if value is not None:
             value = QueueitHelpers.urlDecode(value)
         return value
 
     def getHeader(self, name):
-        if (name is None or name == ""):
+        if name is None or name == "":
             return None
 
         key = "HTTP_" + name.replace("-", "_").upper()
@@ -66,3 +69,6 @@ class Django_1_8_Provider(HttpContextProvider):
 
     def getOriginalRequestUrl(self):
         return self.request.build_absolute_uri()
+
+    def getRequestBodyAsString(self):
+        return ''

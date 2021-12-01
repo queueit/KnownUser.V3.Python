@@ -1,164 +1,188 @@
 from models import RequestValidationResult, ActionTypes, Utils
 from queue_url_params import QueueUrlParams
-from user_in_queue_state_cookie_repository import UserInQueueStateCookieRepository
 from queueit_helpers import QueueitHelpers
 
 
 class UserInQueueService:
-    SDK_VERSION = "v3-python-" + "3.6.1"
+    SDK_VERSION = "v3-python-" + "3.7.0"
 
-    def __init__(self, httpContextProvider, userInQueueStateRepository):
-        self.httpContextProvider = httpContextProvider
-        self.userInQueueStateRepository = userInQueueStateRepository
+    def __init__(self, http_context_provider, user_in_queue_state_repository):
+        self.httpContextProvider = http_context_provider
+        self.userInQueueStateRepository = user_in_queue_state_repository
 
-    def __getValidTokenResult(self, config, queueParams, secretKey):
+    def __getValidTokenResult(self, config, queue_params, secret_key):
 
-        cookieDomain = ""
-        if (not Utils.isNilOrEmpty(config.cookieDomain)):
-            cookieDomain = config.cookieDomain
+        cookie_domain = ""
+        if not Utils.isNilOrEmpty(config.cookieDomain):
+            cookie_domain = config.cookieDomain
 
         self.userInQueueStateRepository.store(
-            config.eventId, queueParams.queueId,
-            queueParams.cookieValidityMinutes, cookieDomain,
-            queueParams.redirectType, secretKey)
+            config.eventId,
+            queue_params.queueId,
+            queue_params.cookieValidityMinutes,
+            cookie_domain,
+            config.isCookieHttpOnly,
+            config.isCookieSecure,
+            queue_params.redirectType,
+            secret_key)
+
         return RequestValidationResult(ActionTypes.QUEUE, config.eventId,
-                                       queueParams.queueId, None,
-                                       queueParams.redirectType, config.actionName)
+                                       queue_params.queueId, None,
+                                       queue_params.redirectType, config.actionName)
 
-    def __getErrorResult(self, customerId, targetUrl, config, qParams, errorCode):
-        timeStamp = str(QueueitHelpers.getCurrentTime())
-        targetUrlParam = ""
-        if (not Utils.isNilOrEmpty(targetUrl)):
-            targetUrlParam = "&t={}".format(QueueitHelpers.urlEncode(targetUrl))
+    def __getErrorResult(self, customer_id, target_url, config, q_params, error_code):
+        time_stamp = str(QueueitHelpers.getCurrentTime())
+        target_url_param = ""
+        if not Utils.isNilOrEmpty(target_url):
+            target_url_param = "&t={}".format(QueueitHelpers.urlEncode(target_url))
 
-        queryString = self.__getQueryString(customerId, config.eventId, config.version, config.actionName,
-                                      config.culture, config.layoutName)
-        query = "{}&queueittoken={}&ts={}{}".format(queryString, qParams.queueITToken, timeStamp, targetUrlParam)
-        redirectUrl = self.__generateRedirectUrl(config.queueDomain, "error/{}/".format(errorCode), query)
+        query_string = self.__getQueryString(customer_id, config.eventId, config.version, config.actionName,
+                                             config.culture, config.layoutName)
+        query = "{}&queueittoken={}&ts={}{}".format(query_string, q_params.queueITToken, time_stamp, target_url_param)
+        redirect_url = self.__generateRedirectUrl(config.queueDomain, "error/{}/".format(error_code), query)
 
-        return RequestValidationResult(ActionTypes.QUEUE, config.eventId, None, redirectUrl, None, config.actionName)
+        return RequestValidationResult(ActionTypes.QUEUE, config.eventId, None, redirect_url, None, config.actionName)
 
-    def __getQueueResult(self, targetUrl, config, customerId):
-        targetUrlParam = ""
-        if (not Utils.isNilOrEmpty(targetUrl)):
-            targetUrlParam = "&t={}".format(QueueitHelpers.urlEncode(targetUrl))
-        queryString = self.__getQueryString(customerId, config.eventId, config.version, config.actionName,
-                                            config.culture, config.layoutName)
-        query = "{}{}".format(queryString, targetUrlParam)
-        redirectUrl = self.__generateRedirectUrl(config.queueDomain, "", query)
+    def __getQueueResult(self, target_url, config, customer_id):
+        target_url_param = ""
+        if not Utils.isNilOrEmpty(target_url):
+            target_url_param = "&t={}".format(QueueitHelpers.urlEncode(target_url))
+        query_string = self.__getQueryString(customer_id, config.eventId, config.version, config.actionName,
+                                             config.culture, config.layoutName)
+        query = "{}{}".format(query_string, target_url_param)
+        redirect_url = self.__generateRedirectUrl(config.queueDomain, "", query)
 
-        return RequestValidationResult(ActionTypes.QUEUE, config.eventId, None, redirectUrl, None, config.actionName)
+        return RequestValidationResult(ActionTypes.QUEUE, config.eventId, None, redirect_url, None, config.actionName)
 
-    def __generateRedirectUrl(self, queueDomain, uriPath, query):
-        if (not queueDomain.endswith("/")):
-            queueDomain = queueDomain + "/"
+    def __generateRedirectUrl(self, queue_domain, uri_path, query):
+        if not queue_domain.endswith("/"):
+            queue_domain = queue_domain + "/"
 
-        return "https://{}{}?{}".format(queueDomain, uriPath, query)
+        return "https://{}{}?{}".format(queue_domain, uri_path, query)
 
-    def __getQueryString(self, customerId, eventId, configVersion, actionName, culture,
-                         layoutName):
-        queryStringList = []
-        queryStringList.append("c=" + QueueitHelpers.urlEncode(customerId))
-        queryStringList.append("e=" + QueueitHelpers.urlEncode(eventId))
-        queryStringList.append("ver=" + self.SDK_VERSION)
-        queryStringList.append("kupver=" + QueueitHelpers.urlEncode(self.httpContextProvider.getProviderName()))
-        if (configVersion is None):
-            configVersion = "-1"
-        queryStringList.append("cver=" + str(configVersion))
-        queryStringList.append("man=" + QueueitHelpers.urlEncode(actionName))
+    def __getQueryString(self, customer_id, event_id, config_version, action_name, culture,
+                         layout_name):
+        query_string_list = [
+            "c=" + QueueitHelpers.urlEncode(customer_id),
+            "e=" + QueueitHelpers.urlEncode(event_id),
+            "ver=" + self.SDK_VERSION,
+            "kupver=" + QueueitHelpers.urlEncode(self.httpContextProvider.getProviderName())
+        ]
+        if config_version is None:
+            config_version = "-1"
+        query_string_list.append("cver=" + str(config_version))
+        query_string_list.append("man=" + QueueitHelpers.urlEncode(action_name))
 
-        if (not Utils.isNilOrEmpty(culture)):
-            queryStringList.append("cid=" + QueueitHelpers.urlEncode(culture))
+        if not Utils.isNilOrEmpty(culture):
+            query_string_list.append("cid=" + QueueitHelpers.urlEncode(culture))
 
-        if (not Utils.isNilOrEmpty(layoutName)):
-            queryStringList.append("l=" + QueueitHelpers.urlEncode(layoutName))
+        if not Utils.isNilOrEmpty(layout_name):
+            query_string_list.append("l=" + QueueitHelpers.urlEncode(layout_name))
 
-        return "&".join(queryStringList)
+        return "&".join(query_string_list)
 
-    def __validateToken(self, config, queueParams, secretKey):
-        calculatedHash = QueueitHelpers.hmacSha256Encode(
-            queueParams.queueITTokenWithoutHash, secretKey)
+    def __validateToken(self, config, queue_params, secret_key):
+        calculated_hash = QueueitHelpers.hmacSha256Encode(
+            queue_params.queueITTokenWithoutHash, secret_key)
 
-        if (calculatedHash.upper() != queueParams.hashCode.upper()):
+        if calculated_hash.upper() != queue_params.hashCode.upper():
             return TokenValidationResult(False, "hash")
 
-        if (queueParams.eventId.upper() != config.eventId.upper()):
+        if queue_params.eventId.upper() != config.eventId.upper():
             return TokenValidationResult(False, "eventid")
 
-        if (queueParams.timeStamp < QueueitHelpers.getCurrentTime()):
+        if queue_params.timeStamp < QueueitHelpers.getCurrentTime():
             return TokenValidationResult(False, "timestamp")
 
         return TokenValidationResult(True, None)
 
-    def validateQueueRequest(self, targetUrl, queueitToken, config, customerId,
-                             secretKey):
+    def validateQueueRequest(self, target_url, queueit_token, config, customer_id, secret_key):
         state = self.userInQueueStateRepository.getState(
-            config.eventId, config.cookieValidityMinute, secretKey, True)
+            config.eventId, config.cookieValidityMinute, secret_key, True)
 
-        if (state.isValid):
-            if (state.isStateExtendable() and config.extendCookieValidity):
+        if state.isValid:
+            if state.isStateExtendable() and config.extendCookieValidity:
                 self.userInQueueStateRepository.store(
-                    config.eventId, state.queueId, None,
-                    Utils.toString(config.cookieDomain), state.redirectType,
-                    secretKey)
+                    config.eventId,
+                    state.queueId, None,
+                    Utils.toString(config.cookieDomain),
+                    config.isCookieHttpOnly,
+                    config.isCookieSecure,
+                    state.redirectType, secret_key)
+
             result = RequestValidationResult(ActionTypes.QUEUE, config.eventId,
                                              state.queueId, None,
                                              state.redirectType, config.actionName)
             return result
 
-        queueParams = QueueUrlParams.extractQueueParams(queueitToken)
-        requestValidationResult = RequestValidationResult(None, None, None, None, None, None)
-        isTokenValid = False
+        queue_params = QueueUrlParams.extractQueueParams(queueit_token)
+        request_validation_result = RequestValidationResult(None, None, None, None, None, None)
+        is_token_valid = False
 
-        if (queueParams is not None):
-            tokenValidationResult = self.__validateToken(config, queueParams, secretKey)
-            isTokenValid = tokenValidationResult.isValid
-            if(isTokenValid):
-                requestValidationResult = self.__getValidTokenResult(config, queueParams, secretKey)
+        if queue_params is not None:
+            token_validation_result = self.__validateToken(config, queue_params, secret_key)
+            is_token_valid = token_validation_result.isValid
+            if is_token_valid:
+                request_validation_result = self.__getValidTokenResult(config, queue_params, secret_key)
             else:
-                requestValidationResult = self.__getErrorResult(customerId, targetUrl, config, queueParams,
-                                                                tokenValidationResult.errorCode)
+                request_validation_result = self.__getErrorResult(customer_id, target_url, config, queue_params,
+                                                                  token_validation_result.errorCode)
         else:
-            requestValidationResult = self.__getQueueResult(targetUrl, config, customerId)
+            request_validation_result = self.__getQueueResult(target_url, config, customer_id)
 
-        if(state.isFound and not isTokenValid):
-            self.userInQueueStateRepository.cancelQueueCookie(config.eventId, config.cookieDomain)
-
-        return requestValidationResult
-
-    def validateCancelRequest(self, targetUrl, cancelConfig, customerId,
-                              secretKey):
-        state = self.userInQueueStateRepository.getState(
-            cancelConfig.eventId, -1, secretKey, False)
-        if (state.isValid):
+        if state.isFound and not is_token_valid:
             self.userInQueueStateRepository.cancelQueueCookie(
-                cancelConfig.eventId, cancelConfig.cookieDomain)
+                config.eventId,
+                config.cookieDomain,
+                config.isCookieHttpOnly,
+                config.isCookieSecure)
 
-            uri = "cancel/{}/{}/".format(customerId, cancelConfig.eventId)
-            targetUrlParam = ""
-            if (not Utils.isNilOrEmpty(targetUrl)):
-                targetUrlParam = "&r={}".format(QueueitHelpers.urlEncode(targetUrl))
-            queryString = self.__getQueryString(customerId, cancelConfig.eventId, cancelConfig.version,
-                                                cancelConfig.actionName, None, None)
-            query = "{}{}".format(queryString, targetUrlParam)
-            redirectUrl = self.__generateRedirectUrl(cancelConfig.queueDomain, uri, query)
+        return request_validation_result
+
+    def validateCancelRequest(self, target_url, cancel_config, customer_id, secret_key):
+
+        state = self.userInQueueStateRepository.getState(cancel_config.eventId, -1, secret_key, False)
+
+        if state.isValid:
+            self.userInQueueStateRepository.cancelQueueCookie(
+                cancel_config.eventId,
+                cancel_config.cookieDomain,
+                cancel_config.isCookieHttpOnly,
+                cancel_config.isCookieSecure)
+
+            target_url_param = ""
+            if not Utils.isNilOrEmpty(target_url):
+                target_url_param = "&r={}".format(QueueitHelpers.urlEncode(target_url))
+
+            query_string = self.__getQueryString(customer_id, cancel_config.eventId, cancel_config.version,
+                                                 cancel_config.actionName, None, None)
+
+            query = "{}{}".format(query_string, target_url_param)
+
+            uri_path = "cancel/{}/{}".format(customer_id, cancel_config.eventId)
+
+            if state.queueId:
+                uri_path = "{}/{}".format(uri_path, state.queueId)
+
+            redirect_url = self.__generateRedirectUrl(cancel_config.queueDomain, uri_path, query)
 
             return RequestValidationResult(ActionTypes.CANCEL,
-                                           cancelConfig.eventId, state.queueId,
-                                           redirectUrl, state.redirectType, cancelConfig.actionName)
+                                           cancel_config.eventId, state.queueId,
+                                           redirect_url, state.redirectType, cancel_config.actionName)
         else:
             return RequestValidationResult(
-                ActionTypes.CANCEL, cancelConfig.eventId, None, None, None, cancelConfig.actionName)
+                ActionTypes.CANCEL, cancel_config.eventId, None, None, None, cancel_config.actionName)
 
-    def extendQueueCookie(self, eventId, cookieValidityMinutes, cookieDomain,
-                          secretKey):
+    def extendQueueCookie(self, event_id, cookie_validity_minutes, cookie_domain,
+                          is_cookie_http_only, is_cookie_secure, secret_key):
         self.userInQueueStateRepository.reissueQueueCookie(
-            eventId, cookieValidityMinutes, cookieDomain, secretKey)
+            event_id, cookie_validity_minutes, cookie_domain, is_cookie_http_only, is_cookie_secure, secret_key)
 
-    def getIgnoreActionResult(self, actionName):
-        return RequestValidationResult(ActionTypes.IGNORE, None, None, None, None, actionName)
+    def getIgnoreActionResult(self, action_name):
+        return RequestValidationResult(ActionTypes.IGNORE, None, None, None, None, action_name)
+
 
 class TokenValidationResult:
-    def __init__(self, isValid, errorCode):
-        self.isValid = isValid
-        self.errorCode = errorCode
+    def __init__(self, is_valid, error_code):
+        self.isValid = is_valid
+        self.errorCode = error_code

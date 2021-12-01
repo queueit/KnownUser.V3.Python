@@ -1,9 +1,6 @@
 import unittest
 
-from queueit_knownuserv3.integration_config_helpers import IntegrationEvaluator
-from queueit_knownuserv3.integration_config_helpers import UrlValidatorHelper, CookieValidatorHelper
-from queueit_knownuserv3.integration_config_helpers import UserAgentValidatorHelper, HttpHeaderValidatorHelper
-from queueit_knownuserv3.integration_config_helpers import ComparisonOperatorHelper
+from queueit_knownuserv3.integration_config_helpers import *
 from queueit_knownuserv3.http_context_providers import HttpContextProvider
 
 
@@ -11,16 +8,20 @@ class HttpContextProviderMock(HttpContextProvider):
     def __init__(self):
         self.headers = {}
         self.cookies = {}
+        self.body = ""
 
-    def getHeader(self, headerName):
-        if (not headerName in self.headers):
+    def getHeader(self, header_name):
+        if header_name not in self.headers:
             return None
-        return self.headers[headerName]
+        return self.headers[header_name]
 
-    def getCookie(self, cookieName):
-        if (not cookieName in self.cookies):
+    def getCookie(self, cookie_name):
+        if cookie_name not in self.cookies:
             return None
-        return self.cookies[cookieName]
+        return self.cookies[cookie_name]
+
+    def getRequestBodyAsString(self):
+        return self.body
 
 
 class TestIntegrationEvaluator(unittest.TestCase):
@@ -29,7 +30,7 @@ class TestIntegrationEvaluator(unittest.TestCase):
             "Integrations": [{
                 "Triggers": [{
                     "LogicalOperator":
-                    "And",
+                        "And",
                     "TriggerParts": [{
                         "CookieName": "c1",
                         "Operator": "Equals",
@@ -59,10 +60,10 @@ class TestIntegrationEvaluator(unittest.TestCase):
         integrationConfig = {
             "Integrations": [{
                 "Name":
-                "integration1",
+                    "integration1",
                 "Triggers": [{
                     "LogicalOperator":
-                    "And",
+                        "And",
                     "TriggerParts": [{
                         "CookieName": "c1",
                         "Operator": "Equals",
@@ -95,10 +96,10 @@ class TestIntegrationEvaluator(unittest.TestCase):
         integrationConfig = {
             "Integrations": [{
                 "Name":
-                "integration1",
+                    "integration1",
                 "Triggers": [{
                     "LogicalOperator":
-                    "And",
+                        "And",
                     "TriggerParts": [{
                         "CookieName": "c1",
                         "Operator": "Equals",
@@ -137,10 +138,10 @@ class TestIntegrationEvaluator(unittest.TestCase):
         integrationConfig = {
             "Integrations": [{
                 "Name":
-                "integration1",
+                    "integration1",
                 "Triggers": [{
                     "LogicalOperator":
-                    "Or",
+                        "Or",
                     "TriggerParts": [{
                         "CookieName": "c1",
                         "Operator": "Equals",
@@ -172,10 +173,10 @@ class TestIntegrationEvaluator(unittest.TestCase):
         integrationConfig = {
             "Integrations": [{
                 "Name":
-                "integration1",
+                    "integration1",
                 "Triggers": [{
                     "LogicalOperator":
-                    "Or",
+                        "Or",
                     "TriggerParts": [{
                         "CookieName": "c1",
                         "Operator": "Equals",
@@ -207,10 +208,10 @@ class TestIntegrationEvaluator(unittest.TestCase):
         integrationConfig = {
             "Integrations": [{
                 "Name":
-                "integration1",
+                    "integration1",
                 "Triggers": [{
                     "LogicalOperator":
-                    "And",
+                        "And",
                     "TriggerParts": [{
                         "CookieName": "c1",
                         "Operator": "Equals",
@@ -221,7 +222,7 @@ class TestIntegrationEvaluator(unittest.TestCase):
                     }]
                 }, {
                     "LogicalOperator":
-                    "And",
+                        "And",
                     "TriggerParts": [{
                         "CookieName": "c1",
                         "Operator": "Equals",
@@ -254,10 +255,10 @@ class TestIntegrationEvaluator(unittest.TestCase):
         integrationConfig = {
             "Integrations": [{
                 "Name":
-                "integration0",
+                    "integration0",
                 "Triggers": [{
                     "LogicalOperator":
-                    "And",
+                        "And",
                     "TriggerParts": [{
                         "UrlPart": "PageUrl",
                         "ValidatorType": "UrlValidator",
@@ -269,10 +270,10 @@ class TestIntegrationEvaluator(unittest.TestCase):
                 }]
             }, {
                 "Name":
-                "integration1",
+                    "integration1",
                 "Triggers": [{
                     "LogicalOperator":
-                    "And",
+                        "And",
                     "TriggerParts": [{
                         "UrlPart": "PageUrl",
                         "ValidatorType": "UrlValidator",
@@ -284,10 +285,10 @@ class TestIntegrationEvaluator(unittest.TestCase):
                 }]
             }, {
                 "Name":
-                "integration2",
+                    "integration2",
                 "Triggers": [{
                     "LogicalOperator":
-                    "And",
+                        "And",
                     "TriggerParts": [{
                         "CookieName": "c1",
                         "ValidatorType": "CookieValidator",
@@ -357,7 +358,6 @@ class TestUrlValidatorHelper(unittest.TestCase):
 
 class TestCookieValidatorHelper(unittest.TestCase):
     def test_evaluate(self):
-
         hcpMock = HttpContextProviderMock()
         assert (not CookieValidatorHelper.evaluate(None, hcpMock))
         assert (not CookieValidatorHelper.evaluate({}, hcpMock))
@@ -551,3 +551,46 @@ class TestComparisonOperatorHelper(unittest.TestCase):
     def test_evaluate_unsupported_operator(self):
         assert (not ComparisonOperatorHelper.evaluate("-not-supported-", False,
                                                       False, None, None, None))
+
+
+class TestRequestBodyValidatorHelper(unittest.TestCase):
+    def test_evaluate(self):
+        hcp_mock = HttpContextProviderMock()
+        assert (not RequestBodyValidatorHelper.evaluate(None, hcp_mock))
+        assert (not RequestBodyValidatorHelper.evaluate({}, hcp_mock))
+
+        trigger_part = {
+            "Operator": "Contains",
+            "IsIgnoreCase": True,
+            "IsNegative": False,
+            "ValueToCompare": "test body"
+        }
+        assert (not RequestBodyValidatorHelper.evaluate(trigger_part, hcp_mock))
+
+        hcp_mock.body = "my test body is here"
+        assert (RequestBodyValidatorHelper.evaluate(trigger_part, hcp_mock))
+
+        trigger_part = {
+            "Operator": "Equals",
+            "IsIgnoreCase": True,
+            "IsNegative": False,
+            "ValueToCompare": "Test"
+        }
+        assert (not RequestBodyValidatorHelper.evaluate(trigger_part, hcp_mock))
+
+        trigger_part = {
+            "Operator": "Contains",
+            "IsIgnoreCase": True,
+            "IsNegative": True,
+            "ValueToCompare": "Test"
+        }
+        assert (not RequestBodyValidatorHelper.evaluate(trigger_part, hcp_mock))
+
+        trigger_part = {
+            "Operator": "Contains",
+            "IsIgnoreCase": True,
+            "IsNegative": True,
+            "ValueToCompare": "BTest"
+        }
+        hcp_mock.body = "my test body is here"
+        assert (RequestBodyValidatorHelper.evaluate(trigger_part, hcp_mock))
