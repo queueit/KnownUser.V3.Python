@@ -136,7 +136,8 @@ def index(request):
                 response["Location"] = validationResult.redirectUrl                                
             else:
                 headerKey = validationResult.getAjaxQueueRedirectHeaderKey()
-                response[headerKey] = validationResult.getAjaxRedirectUrl()     
+                response[headerKey] = validationResult.getAjaxRedirectUrl()   
+                response["Access-Control-Expose-Headers"] = validationResult.getAjaxQueueRedirectHeaderKey()  
         else:
             # Request can continue, we remove queueittoken from url to avoid sharing of user specific token
             if (requestUrl != requestUrlWithoutToken and validationResult.actionType == "Queue"):
