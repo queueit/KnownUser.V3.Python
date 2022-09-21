@@ -1,8 +1,7 @@
 import hmac
 import hashlib
-import urllib
 import time
-import urlparse
+from urllib.parse import urlparse, unquote, quote
 from datetime import datetime, timedelta
 
 
@@ -18,15 +17,15 @@ class QueueitHelpers:
 
     @staticmethod
     def urlEncode(v):
-        return urllib.quote(v, safe='~')
+        return quote(v, safe='~')
 
     @staticmethod
     def urlDecode(v):
-        return urllib.unquote(v)
+        return unquote(v)
 
     @staticmethod
     def urlParse(url_string):
-        return urlparse.urlparse(url_string)
+        return urlparse(url_string)
 
     @staticmethod
     def getCookieExpirationDate():

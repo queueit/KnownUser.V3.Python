@@ -87,7 +87,7 @@ class CancelEventConfig:
                 "&ActionName:" + Utils.toString(self.actionName))
 
 
-class KnownUserError(StandardError):
+class KnownUserError(LookupError):
     pass
 
 
